@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249763088017",
+    "project_id": "caller-id-34797",
+    "storage_bucket": "caller-id-34797.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249763088017:android:27d176be69e033d6dd6130",
+        "android_client_info": {
+          "package_name": "callerid.callblocker.spamcall.callerinfo.phonecall"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-TXZGoeXl-VQPDVIRnN4jYZmO9H9avyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,319 @@
+<resources>
+    <string name="app_name">Callora</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_1_headline">Vit hvem som ringer</string>
+    <string name="onboarding_1_subtitle">Callora identifiserer innkommende anrop i sanntid, så du aldri trenger å gjette hvem som ringer.</string>
+    <string name="onboarding_2_headline">Blokker spam før det ringer</string>
+    <string name="onboarding_2_subtitle">Callora filtrerer automatisk robotanrop og kjente spam-numre, slik at telefonen din holder seg stille.</string>
+    <string name="onboarding_3_headline">Dataene dine forblir dine</string>
+    <string name="onboarding_3_subtitle">Oppslag av innringer skjer uten å dele kontaktene eller anropsloggen din med noen.</string>
+    <string name="onboarding_button_next">Neste</string>
+    <string name="onboarding_button_get_started">Kom i gang</string>
+
+    <!-- Permission prompts -->
+    <string name="permission_grant_access">Gi tilgang</string>
+    <string name="permission_got_it">Skjønner</string>
+    <string name="permission_allow_access">Tillat tilgang</string>
+    <string name="permission_not_now">Ikke nå</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Hjem</string>
+    <string name="nav_contacts">Kontakter</string>
+    <string name="nav_spam">Spam</string>
+    <string name="nav_settings">Innstillinger</string>
+
+    <!-- Home screen -->
+    <string name="home_dialpad_content_description">Ringetastatur</string>
+    <string name="home_notifications_content_description">Varsler</string>
+    <string name="home_recent_section_title">NYLIGE</string>
+    <string name="home_call_log_permission_message">Gi tilgang til kontakter og anropslogg for å se nylige anrop.</string>
+    <string name="home_no_recent_calls">Ingen nylige anrop ennå.</string>
+    <string name="home_call_log_permission_heading">Hold oversikt over alle anrop</string>
+    <string name="home_call_log_permission_subtext">Tillat tilgang til anropslogg for å låse opp dette</string>
+    <string name="home_greeting_with_name">Hei, %1$s</string>
+    <string name="home_greeting_default">Velkommen tilbake</string>
+    <string name="home_protection_active">Beskyttelse aktiv</string>
+    <string name="home_search_hint">Søk etter et nummer eller navn</string>
+    <string name="home_spam_protection_label">Spambeskyttelse</string>
+    <string name="home_coming_soon">Kommer snart</string>
+    <string name="home_call_content_description">Ring %1$s</string>
+    <string name="home_spam_badge">Spam</string>
+
+    <!-- Dialpad -->
+    <string name="dialpad_back_content_description">Tilbake</string>
+    <string name="dialpad_delete_content_description">Slett</string>
+    <string name="dialpad_call_content_description">Ring</string>
+
+    <!-- Outgoing dialing -->
+    <string name="outgoing_status_ringing">Ringer…</string>
+    <string name="outgoing_status_calling">Ringer opp…</string>
+    <string name="outgoing_call_label">UTGÅENDE ANROP</string>
+    <string name="outgoing_cancel_label">Avbryt</string>
+
+    <!-- Shared call-screen tags/labels -->
+    <string name="call_tag_marked_spam">Merket som spam av deg tidligere</string>
+    <string name="call_tag_saved_contact">Lagret kontakt</string>
+    <string name="call_minimize_content_description">Minimer</string>
+    <string name="call_mute_label">Demp</string>
+    <string name="call_speaker_label">Høyttaler</string>
+    <string name="incoming_call_label">INNKOMMENDE ANROP</string>
+    <string name="incoming_unknown_number">Ukjent nummer</string>
+    <string name="incoming_slide_hint">Sveip opp på en av knappene, eller trykk</string>
+    <string name="incoming_decline_label">Avvis</string>
+    <string name="incoming_answer_label">Svar</string>
+    <string name="incoming_message_label">Melding</string>
+    <string name="incoming_block_label">Blokker</string>
+
+    <!-- Active call screen -->
+    <string name="active_call_unknown_caller">Ukjent</string>
+    <string name="active_call_keypad_label">Tastatur</string>
+    <string name="active_call_add_call_label">Legg til anrop</string>
+    <string name="active_call_contact_label">Kontakt</string>
+    <string name="active_call_more_label">Mer</string>
+    <string name="active_call_end_call_label">Avslutt anrop</string>
+    <string name="active_call_hide_keypad_content_description">Skjul tastatur</string>
+    <string name="active_call_merge_unsupported_fallback_label">det nummeret</string>
+    <string name="active_call_merge_unsupported_toast">Å legge til %1$s støttes ikke ennå — sammenslåing av anrop krever en fremtidig oppdatering</string>
+    <string name="active_call_more_options_toast">Flere alternativer kommer snart</string>
+
+    <!-- Common actions (reused across dialogs/sheets) -->
+    <string name="common_cancel">Avbryt</string>
+    <string name="common_add">Legg til</string>
+
+    <!-- Add call sheet + manual number entry -->
+    <string name="add_call_title">Legg til anrop</string>
+    <string name="add_call_dial_number">Tast et nummer</string>
+    <string name="add_call_choose_contact">Velg kontakt</string>
+    <string name="manual_number_entry_placeholder">Telefonnummer</string>
+
+    <!-- Shared spam-report prompt (after-call + call-ended cards) -->
+    <string name="spam_report_question">Var dette anropet spam?</string>
+    <string name="spam_report_not_spam">Nei, det er greit</string>
+    <string name="spam_report_report_spam">Rapporter spam</string>
+    <string name="call_status_ended">Anrop avsluttet</string>
+    <string name="call_status_missed">Tapt anrop</string>
+
+    <!-- Spam categories -->
+    <string name="spam_category_telemarketing">Telemarketing</string>
+    <string name="spam_category_scam">Svindel</string>
+    <string name="spam_category_robocall">Robotanrop</string>
+    <string name="spam_category_fraud">Bedrageri</string>
+    <string name="spam_category_other">Annet</string>
+
+    <!-- Call-ended card -->
+    <string name="call_ended_dismiss_content_description">Lukk</string>
+    <string name="call_ended_action_call">Ring</string>
+    <string name="call_ended_action_message">Melding</string>
+    <string name="call_ended_action_save">Lagre</string>
+    <string name="call_ended_action_contact">Kontakt</string>
+    <string name="call_ended_action_block">Blokker</string>
+    <string name="call_ended_action_unblock">Opphev blokkering</string>
+    <string name="call_ended_view_profile">Vis profil</string>
+    <string name="call_ended_no_additional_details">Ingen flere detaljer tilgjengelig</string>
+    <string name="call_ended_reported_as_spam">Rapportert som spam</string>
+    <string name="call_ended_status_line">%1$s · %2$s</string>
+    <string name="call_ended_marked_as_spam_subtext">Merket som spam · %1$s</string>
+    <string name="call_ended_toast_number_blocked">Nummer blokkert</string>
+    <string name="call_ended_toast_number_unblocked">Blokkering av nummer opphevet</string>
+    <string name="call_ended_toast_block_update_failed">Kunne ikke oppdatere blokkeringsstatus</string>
+    <string name="call_ended_detail_category">Kategori: %1$s</string>
+    <string name="call_ended_detail_marked">Merket %1$s</string>
+    <plurals name="call_ended_detail_call_count">
+        <item quantity="one">%d anrop med dette nummeret</item>
+        <item quantity="other">%d anrop med dette nummeret</item>
+    </plurals>
+    <string name="call_ended_relative_just_now">akkurat nå</string>
+    <string name="call_ended_relative_minutes_ago">%1$d min siden</string>
+    <string name="call_ended_relative_hours_ago">%1$d t siden</string>
+
+    <!-- Call banner (ongoing call while elsewhere in the app) -->
+    <string name="call_banner_ringing">Ringer %1$s</string>
+    <string name="call_banner_ongoing">Pågående anrop — %1$s · %2$s</string>
+    <string name="call_banner_calling">Ringer opp %1$s…</string>
+    <string name="call_banner_tap_to_return">%1$s · trykk for å gå tilbake</string>
+
+    <!-- Spam category picker -->
+    <string name="spam_category_picker_title">Rapporter dette nummeret som</string>
+
+    <!-- All contacts screen -->
+    <string name="contacts_title">Alle kontakter</string>
+    <string name="contacts_permission_message">Gi tilgang til kontakter for å se hele kontaktlisten din.</string>
+    <string name="contacts_error_load_failed">Kunne ikke laste inn kontakter. Dra ned eller åpne denne skjermen på nytt for å prøve igjen.</string>
+    <string name="contacts_no_matches">Ingen treff for «%1$s»</string>
+    <string name="contacts_none_found">Ingen kontakter funnet</string>
+    <string name="contacts_permission_heading">Se navn, ikke bare numre</string>
+    <string name="contacts_permission_subtext">Tillat tilgang til kontakter for å låse opp dette</string>
+
+    <!-- Contact detail screen -->
+    <string name="contact_detail_more_content_description">Mer</string>
+    <string name="contact_detail_copy_name">Kopier navn</string>
+    <string name="contact_detail_copy_number">Kopier nummer</string>
+    <string name="contact_detail_unmark_spam">Fjern spam-merking</string>
+    <string name="contact_detail_mark_spam">Merk som spam</string>
+    <string name="contact_detail_copy_contact">Kopier kontakt</string>
+    <string name="contact_detail_delete_contact">Slett kontakt</string>
+    <string name="contact_detail_delete_dialog_title">Slette %1$s?</string>
+    <string name="contact_detail_delete_dialog_message">Dette vil fjerne denne kontakten permanent. Denne handlingen kan ikke angres.</string>
+    <string name="contact_detail_delete_fallback_name">denne kontakten</string>
+    <string name="contact_detail_dialog_delete_button">Slett</string>
+    <string name="contact_detail_action_call">Ring</string>
+    <string name="contact_detail_action_message">Melding</string>
+    <string name="contact_detail_action_block">Blokker</string>
+    <string name="contact_detail_action_unblock">Opphev blokkering</string>
+    <string name="contact_detail_about_section_title">Om</string>
+    <string name="contact_detail_action_save">Lagre</string>
+    <string name="contact_detail_action_report">Rapporter</string>
+    <string name="contact_detail_spam_marked_you">Du merket dette som spam</string>
+    <string name="contact_detail_undo">Angre</string>
+    <string name="contact_detail_call_history_title">Anropshistorikk</string>
+    <string name="contact_detail_filter_all">Alle</string>
+    <string name="contact_detail_filter_missed">Tapt</string>
+    <string name="contact_detail_no_missed_calls">Ingen tapte anrop</string>
+    <string name="contact_detail_no_call_history">Ingen anropshistorikk ennå</string>
+    <string name="contact_detail_call_type_incoming">Innkommende anrop</string>
+    <string name="contact_detail_call_type_outgoing">Utgående anrop</string>
+    <string name="contact_detail_call_type_other">Anrop</string>
+    <string name="contact_detail_duration_minutes_seconds">%1$d min %2$d sek</string>
+    <string name="contact_detail_duration_seconds">%1$d sek</string>
+    <string name="contact_detail_duration_dash">—</string>
+
+    <!-- Search screen -->
+    <string name="search_permission_message">Gi tilgang til kontakter for å søke i dine lagrede kontakter.</string>
+    <string name="search_empty_prompt">Søk etter en kontakt eller et nummer</string>
+
+    <!-- No results screen -->
+    <string name="no_results_title">Ingen informasjon funnet</string>
+    <string name="no_results_subtitle">Dette nummeret er ikke rapportert eller lagret ennå. Du kan fortsatt ringe det eller legge det til som kontakt.</string>
+    <string name="no_results_add_to_contacts">Legg til i kontakter</string>
+
+    <!-- Blocked list screen -->
+    <string name="blocked_list_title">Blokkerte numre</string>
+    <string name="blocked_list_status_blocked">Blokkert</string>
+    <string name="blocked_list_unblock_content_description">Opphev blokkering av %1$s</string>
+    <string name="blocked_list_empty">Ingen blokkerte numre</string>
+    <string name="blocked_list_unavailable_message">Callora må angis som standard-appen din for anrops-ID for å administrere blokkerte numre</string>
+    <string name="blocked_list_set_as_default">Angi som standard</string>
+
+    <!-- Block confirm screen -->
+    <string name="block_confirm_title">Blokkere dette nummeret?</string>
+    <string name="block_confirm_subtitle">Du vil ikke motta anrop eller meldinger fra dette nummeret igjen.</string>
+    <string name="block_confirm_button">Blokker nummer</string>
+
+    <!-- Spam center screen -->
+    <string name="spam_center_title">Spamsenter</string>
+    <string name="spam_center_close_content_description">Lukk</string>
+    <string name="spam_center_blocking_rules_title">Blokkeringsregler</string>
+    <string name="spam_center_stat_blocked_week">Blokkert denne uken</string>
+    <string name="spam_center_stat_blocked_alltime">Blokkert totalt</string>
+    <string name="spam_center_rule_auto_block_title">Blokker de mest rapporterte spammerne automatisk</string>
+    <string name="spam_center_rule_auto_block_subtitle">Numre rapportert av fellesskapet</string>
+    <string name="spam_center_rule_telemarketers_title">Blokker telemarketing</string>
+    <string name="spam_center_rule_telemarketers_subtitle">Salgs- og reklameanrop</string>
+    <string name="spam_center_rule_international_title">Blokker internasjonal spam</string>
+    <string name="spam_center_rule_international_subtitle">Ukjente numre fra utlandet</string>
+    <string name="spam_center_manage_blocked_list_title">Administrer blokkeringsliste</string>
+    <plurals name="spam_center_manage_blocked_list_subtitle">
+        <item quantity="one">%d nummer blokkert manuelt</item>
+        <item quantity="other">%d numre blokkert manuelt</item>
+    </plurals>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Innstillinger</string>
+    <string name="settings_section_protection">Beskyttelse</string>
+    <string name="settings_row_caller_id_spam">Anrops-ID og spam</string>
+    <string name="settings_row_blocked_numbers">Blokkerte numre</string>
+    <string name="settings_section_preferences">Preferanser</string>
+    <string name="settings_row_dark_theme">Mørkt tema</string>
+    <string name="settings_row_language">Språk</string>
+    <string name="settings_row_notifications">Varsler</string>
+    <string name="settings_section_support">Støtte</string>
+    <string name="settings_row_privacy_policy">Personvernerklæring</string>
+    <string name="settings_row_help_feedback">Hjelp og tilbakemelding</string>
+    <string name="settings_feedback_email_subject">Callora-tilbakemelding</string>
+    <string name="settings_row_share_app">Del appen</string>
+    <string name="settings_share_text">Sjekk ut Callora — anrops-ID og spamblokkering: %1$s</string>
+    <string name="settings_share_chooser_title">Del Callora</string>
+    <string name="settings_row_rate_us">Vurder oss</string>
+    <string name="settings_profile_fallback_name">Din profil</string>
+
+    <!-- Notifications screen (shared top-bar title with notification settings) -->
+    <string name="notifications_title">Varsler</string>
+    <string name="notifications_sample_spam_blocked">3 spamanrop blokkert i dag</string>
+    <string name="notifications_sample_weekly_summary">Ukentlig beskyttelsessammendrag er klart</string>
+    <string name="notifications_sample_db_updated">Spamdatabase oppdatert</string>
+    <string name="notifications_sample_time_2h_ago">2t siden</string>
+    <string name="notifications_sample_time_1d_ago">1d siden</string>
+    <string name="notifications_sample_time_2d_ago">2d siden</string>
+
+    <!-- Notification settings screen -->
+    <string name="notification_settings_missed_calls">Tapte anrop</string>
+    <string name="notification_settings_spam_alerts">Spamvarsler</string>
+    <string name="notification_settings_app_updates">Appoppdateringer</string>
+    <string name="notification_settings_permission_heading">Gå aldri glipp av det som betyr noe</string>
+    <string name="notification_settings_permission_subtext">Tillat varsler for å låse opp dette</string>
+
+    <!-- Profile screen -->
+    <string name="profile_title">Din profil</string>
+    <string name="profile_unnamed">Uten navn</string>
+    <string name="profile_empty_title">Ingen profil er angitt på denne enheten</string>
+    <string name="profile_empty_subtitle">Du kan legge til navnet og nummeret ditt som enhetseier via telefonens egen Kontakter- eller Innstillinger-app.</string>
+
+    <!-- Language select screen -->
+    <string name="language_select_title">Velg språket ditt</string>
+    <string name="language_select_subtitle">Du kan endre dette senere i innstillingene.</string>
+    <string name="language_select_continue">Fortsett</string>
+    <string name="language_select_selected_content_description">Valgt</string>
+
+    <!-- Set default dialer screen -->
+    <string name="setdefault_card_title">Slik vil anropene dine se ut</string>
+    <string name="setdefault_card_subtitle">Angi Callora som standard telefonapp for å identifisere innringere og blokkere spam automatisk.</string>
+    <string name="setdefault_feature_realtime_id">Sanntids anrops-identifikasjon</string>
+    <string name="setdefault_feature_spam_blocked">Spam rapportert av fellesskapet blokkert</string>
+    <string name="setdefault_feature_keep_contacts">Beholder alle dine eksisterende kontakter</string>
+    <string name="setdefault_mock_name">Rahul Sharma</string>
+    <string name="setdefault_mock_spam_title">Mistenkt spam</string>
+    <string name="setdefault_mock_badge_idd">IDENTIFISERT</string>
+    <string name="setdefault_mock_badge_blocked">BLOKKERT</string>
+
+    <!-- Offline screen -->
+    <string name="offline_title">Du er offline</string>
+    <string name="offline_subtitle">Anrops-ID-oppslag krever internettforbindelse. Lagrede kontakter fungerer fortsatt som vanlig.</string>
+    <string name="offline_try_again">Prøv igjen</string>
+
+    <!-- Placeholder screen -->
+    <string name="placeholder_coming_soon">%1$s — kommer snart</string>
+
+    <!-- Missed call notification -->
+    <string name="missed_call_title_spam">Tapt anrop · Mistenkt spam</string>
+    <string name="missed_call_subtitle_with_name">%1$s · %2$s</string>
+    <string name="missed_call_action_call_back">Ring tilbake</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_missed_calls_name">Tapte anrop</string>
+    <string name="notification_channel_missed_calls_description">Varsler deg om anrop du har gått glipp av</string>
+    <string name="notification_channel_ongoing_calls_name">Pågående anrop</string>
+    <string name="notification_channel_ongoing_calls_description">Vises mens et anrop pågår</string>
+
+    <!-- Ongoing call notification (InCallServiceImpl) -->
+    <string name="ongoing_call_notification_status_active">Pågående anrop</string>
+    <string name="ongoing_call_notification_subtitle">%1$s · %2$s</string>
+    <string name="ongoing_call_notification_return_action">Gå tilbake til anropet</string>
+
+    <!-- Nav host: call-in-progress snackbar + CALL_PHONE permission prompt -->
+    <string name="call_in_progress_snackbar_message">Du har allerede et pågående anrop</string>
+    <string name="call_in_progress_view_action">Vis</string>
+    <string name="call_phone_permission_heading">Ring og administrer anrop</string>
+    <string name="call_phone_permission_subtext">Tillat telefontilgang for å ringe.</string>
+
+    <!-- Contact detail: snackbars + clipboard labels -->
+    <string name="contact_detail_snackbar_marked_spam">Merket som spam</string>
+    <string name="contact_detail_snackbar_removed_spam">Fjernet fra spam</string>
+    <string name="contact_detail_snackbar_name_copied">Navn kopiert</string>
+    <string name="contact_detail_snackbar_number_copied">Nummer kopiert</string>
+    <string name="contact_detail_snackbar_contact_copied">Kontakt kopiert</string>
+    <string name="contact_detail_snackbar_delete_failed">Kunne ikke slette kontakten</string>
+    <string name="contact_detail_clip_label_name">Kontaktnavn</string>
+    <string name="contact_detail_clip_label_number">Telefonnummer</string>
+    <string name="contact_detail_clip_label_contact">Kontakt</string>
+</resources>

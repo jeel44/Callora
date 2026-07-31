@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Theme.AppCompat.Light.NoActionBar (not the platform android:Theme.Material.*) because
+         MainActivity/CallEndedActivity are AppCompatActivity — AppCompatDelegate.onCreate()
+         requires a Theme.AppCompat-derived theme and throws otherwise. Actual screen content
+         always comes from Compose's own CalloraTheme/MaterialTheme in setContent{}, not this XML
+         theme's attributes — except android:windowBackground below, which the system paints
+         directly (bypassing Compose) as the transient frame while a window is being torn down
+         and rebuilt, e.g. by AppCompatDelegate.setApplicationLocales()'s activity recreate() on a
+         language switch. Kept matching ui/theme/Color.kt's LightCanvas so that transient frame
+         isn't visibly different from the real (light-mode) Compose background. -->
+    <style name="Theme.Callora" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background_light</item>
+    </style>
+
+    <!-- Applied via MainActivity.setTheme() before super.onCreate() whenever ThemeState.isDarkMode
+         is true (and this isn't an incoming-call cold start) — swaps android:windowBackground to
+         match ui/theme/Color.kt's DarkCanvas instead of Theme.Callora's light one above, so the
+         same recreate()-triggered transient frame doesn't flash light against a dark screen.
+         ThemeState is an in-memory app singleton (not tied to system dark mode/Configuration), so
+         this can't be done with a values-night resource qualifier alone — it has to be re-applied
+         explicitly in code on every onCreate(), the same way Theme.Callora.IncomingCall is. -->
+    <style name="Theme.Callora.Dark" parent="Theme.Callora">
+        <item name="android:windowBackground">@color/window_background_dark</item>
+    </style>
+
+    <!-- Applied via MainActivity.setTheme() before super.onCreate() only when the launch intent
+         is a cold-start incoming call — swaps just the starting-window background from this
+         theme's default white to a dark navy close to the real call-screen gradient, so there's
+         no white flash while the window is created and before Compose takes over. -->
+    <style name="Theme.Callora.IncomingCall">
+        <item name="android:windowBackground">@color/incoming_call_window_background</item>
+    </style>
+
+    <!-- CallEndedActivity's popup — a translucent window (not a normal opaque screen) so
+         whatever app the user was in stays visible, dimmed, behind the floating card;
+         CallEndedRoute draws that dim scrim itself in Compose. No new permission: this is a
+         plain Activity theme, not a system overlay window. -->
+    <style name="Theme.Callora.CallEnded" parent="Theme.Callora">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+</resources>

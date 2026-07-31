@@ -1,0 +1,319 @@
+<resources>
+    <string name="app_name">Callora</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_1_headline">Wissen, wer anruft</string>
+    <string name="onboarding_1_subtitle">Callora erkennt eingehende Anrufe in Echtzeit, sodass du nie mehr raten musst, wer in der Leitung ist.</string>
+    <string name="onboarding_2_headline">Spam blockieren, bevor es klingelt</string>
+    <string name="onboarding_2_subtitle">Callora filtert automatisch Robocalls und bekannte Spam-Nummern und hält dein Telefon so ruhig.</string>
+    <string name="onboarding_3_headline">Deine Daten bleiben deine</string>
+    <string name="onboarding_3_subtitle">Anrufer-Abfragen laufen ab, ohne deine Kontakte oder deinen Anrufverlauf mit jemandem zu teilen.</string>
+    <string name="onboarding_button_next">Weiter</string>
+    <string name="onboarding_button_get_started">Loslegen</string>
+
+    <!-- Permission prompts -->
+    <string name="permission_grant_access">Zugriff gewähren</string>
+    <string name="permission_got_it">Verstanden</string>
+    <string name="permission_allow_access">Zugriff erlauben</string>
+    <string name="permission_not_now">Nicht jetzt</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Start</string>
+    <string name="nav_contacts">Kontakte</string>
+    <string name="nav_spam">Spam</string>
+    <string name="nav_settings">Einstellungen</string>
+
+    <!-- Home screen -->
+    <string name="home_dialpad_content_description">Wähltastatur</string>
+    <string name="home_notifications_content_description">Benachrichtigungen</string>
+    <string name="home_recent_section_title">LETZTE</string>
+    <string name="home_call_log_permission_message">Gewähre Zugriff auf Kontakte und Anrufliste, um deine letzten Anrufe zu sehen.</string>
+    <string name="home_no_recent_calls">Noch keine letzten Anrufe.</string>
+    <string name="home_call_log_permission_heading">Behalte jeden Anruf im Blick</string>
+    <string name="home_call_log_permission_subtext">Erlaube den Zugriff auf die Anrufliste, um dies freizuschalten</string>
+    <string name="home_greeting_with_name">Hallo, %1$s</string>
+    <string name="home_greeting_default">Willkommen zurück</string>
+    <string name="home_protection_active">Schutz aktiv</string>
+    <string name="home_search_hint">Nach Nummer oder Namen suchen</string>
+    <string name="home_spam_protection_label">Spamschutz</string>
+    <string name="home_coming_soon">Demnächst verfügbar</string>
+    <string name="home_call_content_description">%1$s anrufen</string>
+    <string name="home_spam_badge">Spam</string>
+
+    <!-- Dialpad -->
+    <string name="dialpad_back_content_description">Zurück</string>
+    <string name="dialpad_delete_content_description">Löschen</string>
+    <string name="dialpad_call_content_description">Anrufen</string>
+
+    <!-- Outgoing dialing -->
+    <string name="outgoing_status_ringing">Klingelt…</string>
+    <string name="outgoing_status_calling">Wird angerufen…</string>
+    <string name="outgoing_call_label">AUSGEHENDER ANRUF</string>
+    <string name="outgoing_cancel_label">Abbrechen</string>
+
+    <!-- Shared call-screen tags/labels -->
+    <string name="call_tag_marked_spam">Von dir zuvor als Spam markiert</string>
+    <string name="call_tag_saved_contact">Gespeicherter Kontakt</string>
+    <string name="call_minimize_content_description">Minimieren</string>
+    <string name="call_mute_label">Stumm</string>
+    <string name="call_speaker_label">Lautsprecher</string>
+    <string name="incoming_call_label">EINGEHENDER ANRUF</string>
+    <string name="incoming_unknown_number">Unbekannte Nummer</string>
+    <string name="incoming_slide_hint">Nach oben wischen auf einer der Schaltflächen oder tippen</string>
+    <string name="incoming_decline_label">Ablehnen</string>
+    <string name="incoming_answer_label">Annehmen</string>
+    <string name="incoming_message_label">Nachricht</string>
+    <string name="incoming_block_label">Blockieren</string>
+
+    <!-- Active call screen -->
+    <string name="active_call_unknown_caller">Unbekannt</string>
+    <string name="active_call_keypad_label">Tastatur</string>
+    <string name="active_call_add_call_label">Anruf hinzufügen</string>
+    <string name="active_call_contact_label">Kontakt</string>
+    <string name="active_call_more_label">Mehr</string>
+    <string name="active_call_end_call_label">Anruf beenden</string>
+    <string name="active_call_hide_keypad_content_description">Tastatur ausblenden</string>
+    <string name="active_call_merge_unsupported_fallback_label">diese Nummer</string>
+    <string name="active_call_merge_unsupported_toast">%1$s hinzuzufügen wird noch nicht unterstützt — das Zusammenführen von Anrufen erfordert eine spätere Aktualisierung</string>
+    <string name="active_call_more_options_toast">Weitere Optionen demnächst verfügbar</string>
+
+    <!-- Common actions (reused across dialogs/sheets) -->
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_add">Hinzufügen</string>
+
+    <!-- Add call sheet + manual number entry -->
+    <string name="add_call_title">Anruf hinzufügen</string>
+    <string name="add_call_dial_number">Nummer wählen</string>
+    <string name="add_call_choose_contact">Kontakt auswählen</string>
+    <string name="manual_number_entry_placeholder">Telefonnummer</string>
+
+    <!-- Shared spam-report prompt (after-call + call-ended cards) -->
+    <string name="spam_report_question">War dieser Anruf Spam?</string>
+    <string name="spam_report_not_spam">Nein, alles in Ordnung</string>
+    <string name="spam_report_report_spam">Spam melden</string>
+    <string name="call_status_ended">Anruf beendet</string>
+    <string name="call_status_missed">Verpasster Anruf</string>
+
+    <!-- Spam categories -->
+    <string name="spam_category_telemarketing">Telemarketing</string>
+    <string name="spam_category_scam">Betrugsmasche</string>
+    <string name="spam_category_robocall">Robocall</string>
+    <string name="spam_category_fraud">Betrug</string>
+    <string name="spam_category_other">Andere</string>
+
+    <!-- Call-ended card -->
+    <string name="call_ended_dismiss_content_description">Schließen</string>
+    <string name="call_ended_action_call">Anrufen</string>
+    <string name="call_ended_action_message">Nachricht</string>
+    <string name="call_ended_action_save">Speichern</string>
+    <string name="call_ended_action_contact">Kontakt</string>
+    <string name="call_ended_action_block">Blockieren</string>
+    <string name="call_ended_action_unblock">Blockierung aufheben</string>
+    <string name="call_ended_view_profile">Profil anzeigen</string>
+    <string name="call_ended_no_additional_details">Keine weiteren Details verfügbar</string>
+    <string name="call_ended_reported_as_spam">Als Spam gemeldet</string>
+    <string name="call_ended_status_line">%1$s · %2$s</string>
+    <string name="call_ended_marked_as_spam_subtext">Als Spam markiert · %1$s</string>
+    <string name="call_ended_toast_number_blocked">Nummer blockiert</string>
+    <string name="call_ended_toast_number_unblocked">Blockierung der Nummer aufgehoben</string>
+    <string name="call_ended_toast_block_update_failed">Blockierstatus konnte nicht aktualisiert werden</string>
+    <string name="call_ended_detail_category">Kategorie: %1$s</string>
+    <string name="call_ended_detail_marked">Markiert %1$s</string>
+    <plurals name="call_ended_detail_call_count">
+        <item quantity="one">%d Anruf mit dieser Nummer</item>
+        <item quantity="other">%d Anrufe mit dieser Nummer</item>
+    </plurals>
+    <string name="call_ended_relative_just_now">gerade eben</string>
+    <string name="call_ended_relative_minutes_ago">vor %1$d Min.</string>
+    <string name="call_ended_relative_hours_ago">vor %1$d Std.</string>
+
+    <!-- Call banner (ongoing call while elsewhere in the app) -->
+    <string name="call_banner_ringing">%1$s klingelt</string>
+    <string name="call_banner_ongoing">Anruf läuft — %1$s · %2$s</string>
+    <string name="call_banner_calling">%1$s wird angerufen…</string>
+    <string name="call_banner_tap_to_return">%1$s · tippen, um zurückzukehren</string>
+
+    <!-- Spam category picker -->
+    <string name="spam_category_picker_title">Diese Nummer melden als</string>
+
+    <!-- All contacts screen -->
+    <string name="contacts_title">Alle Kontakte</string>
+    <string name="contacts_permission_message">Gewähre Zugriff auf Kontakte, um deine vollständige Kontaktliste zu sehen.</string>
+    <string name="contacts_error_load_failed">Kontakte konnten nicht geladen werden. Zum erneuten Versuch nach unten ziehen oder diesen Bildschirm neu öffnen.</string>
+    <string name="contacts_no_matches">Keine Treffer für \"%1$s\"</string>
+    <string name="contacts_none_found">Keine Kontakte gefunden</string>
+    <string name="contacts_permission_heading">Namen sehen, nicht nur Nummern</string>
+    <string name="contacts_permission_subtext">Erlaube den Zugriff auf Kontakte, um dies freizuschalten</string>
+
+    <!-- Contact detail screen -->
+    <string name="contact_detail_more_content_description">Mehr</string>
+    <string name="contact_detail_copy_name">Namen kopieren</string>
+    <string name="contact_detail_copy_number">Nummer kopieren</string>
+    <string name="contact_detail_unmark_spam">Spam-Markierung aufheben</string>
+    <string name="contact_detail_mark_spam">Als Spam markieren</string>
+    <string name="contact_detail_copy_contact">Kontakt kopieren</string>
+    <string name="contact_detail_delete_contact">Kontakt löschen</string>
+    <string name="contact_detail_delete_dialog_title">%1$s löschen?</string>
+    <string name="contact_detail_delete_dialog_message">Dadurch wird dieser Kontakt dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="contact_detail_delete_fallback_name">diesen Kontakt</string>
+    <string name="contact_detail_dialog_delete_button">Löschen</string>
+    <string name="contact_detail_action_call">Anrufen</string>
+    <string name="contact_detail_action_message">Nachricht</string>
+    <string name="contact_detail_action_block">Blockieren</string>
+    <string name="contact_detail_action_unblock">Blockierung aufheben</string>
+    <string name="contact_detail_about_section_title">Info</string>
+    <string name="contact_detail_action_save">Speichern</string>
+    <string name="contact_detail_action_report">Melden</string>
+    <string name="contact_detail_spam_marked_you">Du hast dies als Spam markiert</string>
+    <string name="contact_detail_undo">Rückgängig</string>
+    <string name="contact_detail_call_history_title">Anrufverlauf</string>
+    <string name="contact_detail_filter_all">Alle</string>
+    <string name="contact_detail_filter_missed">Verpasst</string>
+    <string name="contact_detail_no_missed_calls">Keine verpassten Anrufe</string>
+    <string name="contact_detail_no_call_history">Noch kein Anrufverlauf</string>
+    <string name="contact_detail_call_type_incoming">Eingehender Anruf</string>
+    <string name="contact_detail_call_type_outgoing">Ausgehender Anruf</string>
+    <string name="contact_detail_call_type_other">Anruf</string>
+    <string name="contact_detail_duration_minutes_seconds">%1$d Min. %2$d Sek.</string>
+    <string name="contact_detail_duration_seconds">%1$d Sek.</string>
+    <string name="contact_detail_duration_dash">—</string>
+
+    <!-- Search screen -->
+    <string name="search_permission_message">Gewähre Zugriff auf Kontakte, um deine gespeicherten Kontakte zu durchsuchen.</string>
+    <string name="search_empty_prompt">Nach einem Kontakt oder einer Nummer suchen</string>
+
+    <!-- No results screen -->
+    <string name="no_results_title">Keine Informationen gefunden</string>
+    <string name="no_results_subtitle">Diese Nummer wurde noch nicht gemeldet oder gespeichert. Du kannst sie trotzdem anrufen oder als Kontakt hinzufügen.</string>
+    <string name="no_results_add_to_contacts">Zu Kontakten hinzufügen</string>
+
+    <!-- Blocked list screen -->
+    <string name="blocked_list_title">Blockierte Nummern</string>
+    <string name="blocked_list_status_blocked">Blockiert</string>
+    <string name="blocked_list_unblock_content_description">Blockierung von %1$s aufheben</string>
+    <string name="blocked_list_empty">Keine blockierten Nummern</string>
+    <string name="blocked_list_unavailable_message">Callora muss als deine Standard-App für Anrufer-ID festgelegt sein, um blockierte Nummern zu verwalten</string>
+    <string name="blocked_list_set_as_default">Als Standard festlegen</string>
+
+    <!-- Block confirm screen -->
+    <string name="block_confirm_title">Diese Nummer blockieren?</string>
+    <string name="block_confirm_subtitle">Du erhältst keine Anrufe oder Nachrichten mehr von dieser Nummer.</string>
+    <string name="block_confirm_button">Nummer blockieren</string>
+
+    <!-- Spam center screen -->
+    <string name="spam_center_title">Spam-Center</string>
+    <string name="spam_center_close_content_description">Schließen</string>
+    <string name="spam_center_blocking_rules_title">Blockierregeln</string>
+    <string name="spam_center_stat_blocked_week">Diese Woche blockiert</string>
+    <string name="spam_center_stat_blocked_alltime">Insgesamt blockiert</string>
+    <string name="spam_center_rule_auto_block_title">Top-Spammer automatisch blockieren</string>
+    <string name="spam_center_rule_auto_block_subtitle">Von der Community gemeldete Nummern</string>
+    <string name="spam_center_rule_telemarketers_title">Telemarketing blockieren</string>
+    <string name="spam_center_rule_telemarketers_subtitle">Verkaufs- und Werbeanrufe</string>
+    <string name="spam_center_rule_international_title">Internationalen Spam blockieren</string>
+    <string name="spam_center_rule_international_subtitle">Unbekannte Nummern aus dem Ausland</string>
+    <string name="spam_center_manage_blocked_list_title">Blockierliste verwalten</string>
+    <plurals name="spam_center_manage_blocked_list_subtitle">
+        <item quantity="one">%d Nummer manuell blockiert</item>
+        <item quantity="other">%d Nummern manuell blockiert</item>
+    </plurals>
+
+    <!-- Settings screen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_section_protection">Schutz</string>
+    <string name="settings_row_caller_id_spam">Anrufer-ID und Spam</string>
+    <string name="settings_row_blocked_numbers">Blockierte Nummern</string>
+    <string name="settings_section_preferences">Präferenzen</string>
+    <string name="settings_row_dark_theme">Dunkles Design</string>
+    <string name="settings_row_language">Sprache</string>
+    <string name="settings_row_notifications">Benachrichtigungen</string>
+    <string name="settings_section_support">Support</string>
+    <string name="settings_row_privacy_policy">Datenschutzerklärung</string>
+    <string name="settings_row_help_feedback">Hilfe und Feedback</string>
+    <string name="settings_feedback_email_subject">Callora-Feedback</string>
+    <string name="settings_row_share_app">App teilen</string>
+    <string name="settings_share_text">Schau dir Callora an — Anrufer-ID und Spam-Blocker: %1$s</string>
+    <string name="settings_share_chooser_title">Callora teilen</string>
+    <string name="settings_row_rate_us">Bewerte uns</string>
+    <string name="settings_profile_fallback_name">Dein Profil</string>
+
+    <!-- Notifications screen (shared top-bar title with notification settings) -->
+    <string name="notifications_title">Benachrichtigungen</string>
+    <string name="notifications_sample_spam_blocked">3 Spam-Anrufe heute blockiert</string>
+    <string name="notifications_sample_weekly_summary">Wöchentliche Schutzübersicht bereit</string>
+    <string name="notifications_sample_db_updated">Spam-Datenbank aktualisiert</string>
+    <string name="notifications_sample_time_2h_ago">vor 2 Std.</string>
+    <string name="notifications_sample_time_1d_ago">vor 1 Tag</string>
+    <string name="notifications_sample_time_2d_ago">vor 2 Tagen</string>
+
+    <!-- Notification settings screen -->
+    <string name="notification_settings_missed_calls">Verpasste Anrufe</string>
+    <string name="notification_settings_spam_alerts">Spam-Benachrichtigungen</string>
+    <string name="notification_settings_app_updates">App-Updates</string>
+    <string name="notification_settings_permission_heading">Verpasse nie mehr das Wichtige</string>
+    <string name="notification_settings_permission_subtext">Erlaube Benachrichtigungen, um dies freizuschalten</string>
+
+    <!-- Profile screen -->
+    <string name="profile_title">Dein Profil</string>
+    <string name="profile_unnamed">Unbenannt</string>
+    <string name="profile_empty_title">Auf diesem Gerät ist kein Profil eingerichtet</string>
+    <string name="profile_empty_subtitle">Du kannst deinen Namen und deine Nummer als Gerätebesitzer über die Kontakte- oder Einstellungen-App deines Telefons hinzufügen.</string>
+
+    <!-- Language select screen -->
+    <string name="language_select_title">Wähle deine Sprache</string>
+    <string name="language_select_subtitle">Du kannst dies später in den Einstellungen ändern.</string>
+    <string name="language_select_continue">Weiter</string>
+    <string name="language_select_selected_content_description">Ausgewählt</string>
+
+    <!-- Set default dialer screen -->
+    <string name="setdefault_card_title">So werden deine Anrufe aussehen</string>
+    <string name="setdefault_card_subtitle">Lege Callora als Standard-Telefon-App fest, um Anrufer automatisch zu identifizieren und Spam zu blockieren.</string>
+    <string name="setdefault_feature_realtime_id">Anrufer-Identifikation in Echtzeit</string>
+    <string name="setdefault_feature_spam_blocked">Von der Community gemeldeter Spam blockiert</string>
+    <string name="setdefault_feature_keep_contacts">Behält alle deine bestehenden Kontakte</string>
+    <string name="setdefault_mock_name">Rahul Sharma</string>
+    <string name="setdefault_mock_spam_title">Vermuteter Spam</string>
+    <string name="setdefault_mock_badge_idd">IDENTIFIZIERT</string>
+    <string name="setdefault_mock_badge_blocked">BLOCKIERT</string>
+
+    <!-- Offline screen -->
+    <string name="offline_title">Du bist offline</string>
+    <string name="offline_subtitle">Anrufer-ID-Abfragen benötigen eine Internetverbindung. Gespeicherte Kontakte funktionieren weiterhin wie gewohnt.</string>
+    <string name="offline_try_again">Erneut versuchen</string>
+
+    <!-- Placeholder screen -->
+    <string name="placeholder_coming_soon">%1$s — demnächst verfügbar</string>
+
+    <!-- Missed call notification -->
+    <string name="missed_call_title_spam">Verpasster Anruf · Vermuteter Spam</string>
+    <string name="missed_call_subtitle_with_name">%1$s · %2$s</string>
+    <string name="missed_call_action_call_back">Zurückrufen</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_missed_calls_name">Verpasste Anrufe</string>
+    <string name="notification_channel_missed_calls_description">Benachrichtigt dich über verpasste Anrufe</string>
+    <string name="notification_channel_ongoing_calls_name">Laufende Anrufe</string>
+    <string name="notification_channel_ongoing_calls_description">Wird angezeigt, während ein Anruf läuft</string>
+
+    <!-- Ongoing call notification (InCallServiceImpl) -->
+    <string name="ongoing_call_notification_status_active">Anruf läuft</string>
+    <string name="ongoing_call_notification_subtitle">%1$s · %2$s</string>
+    <string name="ongoing_call_notification_return_action">Zurück zum Anruf</string>
+
+    <!-- Nav host: call-in-progress snackbar + CALL_PHONE permission prompt -->
+    <string name="call_in_progress_snackbar_message">Du hast bereits einen laufenden Anruf</string>
+    <string name="call_in_progress_view_action">Anzeigen</string>
+    <string name="call_phone_permission_heading">Anrufe tätigen und verwalten</string>
+    <string name="call_phone_permission_subtext">Erlaube den Telefonzugriff, um Anrufe zu tätigen.</string>
+
+    <!-- Contact detail: snackbars + clipboard labels -->
+    <string name="contact_detail_snackbar_marked_spam">Als Spam markiert</string>
+    <string name="contact_detail_snackbar_removed_spam">Aus Spam entfernt</string>
+    <string name="contact_detail_snackbar_name_copied">Name kopiert</string>
+    <string name="contact_detail_snackbar_number_copied">Nummer kopiert</string>
+    <string name="contact_detail_snackbar_contact_copied">Kontakt kopiert</string>
+    <string name="contact_detail_snackbar_delete_failed">Kontakt konnte nicht gelöscht werden</string>
+    <string name="contact_detail_clip_label_name">Kontaktname</string>
+    <string name="contact_detail_clip_label_number">Telefonnummer</string>
+    <string name="contact_detail_clip_label_contact">Kontakt</string>
+</resources>

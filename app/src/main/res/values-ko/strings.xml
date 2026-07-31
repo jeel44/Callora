@@ -1,0 +1,317 @@
+<resources>
+    <string name="app_name">Callora</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_1_headline">누구의 전화인지 바로 확인하세요</string>
+    <string name="onboarding_1_subtitle">Callora가 실시간으로 수신 전화를 식별해 주므로 누구인지 더 이상 추측할 필요가 없습니다.</string>
+    <string name="onboarding_2_headline">벨이 울리기 전에 스팸을 차단하세요</string>
+    <string name="onboarding_2_subtitle">Callora가 자동으로 로보콜과 알려진 스팸 번호를 걸러내어 휴대폰을 조용하게 유지합니다.</string>
+    <string name="onboarding_3_headline">내 데이터는 오직 나만의 것입니다</string>
+    <string name="onboarding_3_subtitle">발신자 조회는 연락처나 통화 기록을 누구와도 공유하지 않고 이루어집니다.</string>
+    <string name="onboarding_button_next">다음</string>
+    <string name="onboarding_button_get_started">시작하기</string>
+
+    <!-- Permission prompts -->
+    <string name="permission_grant_access">접근 허용</string>
+    <string name="permission_got_it">확인했습니다</string>
+    <string name="permission_allow_access">접근 허용</string>
+    <string name="permission_not_now">나중에</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">홈</string>
+    <string name="nav_contacts">연락처</string>
+    <string name="nav_spam">스팸</string>
+    <string name="nav_settings">설정</string>
+
+    <!-- Home screen -->
+    <string name="home_dialpad_content_description">다이얼패드</string>
+    <string name="home_notifications_content_description">알림</string>
+    <string name="home_recent_section_title">최근 통화</string>
+    <string name="home_call_log_permission_message">최근 통화를 보려면 연락처 및 통화 기록 접근을 허용하세요.</string>
+    <string name="home_no_recent_calls">아직 최근 통화가 없습니다.</string>
+    <string name="home_call_log_permission_heading">모든 통화를 기록해 보세요</string>
+    <string name="home_call_log_permission_subtext">이 기능을 사용하려면 통화 기록 접근을 허용하세요</string>
+    <string name="home_greeting_with_name">안녕하세요, %1$s님</string>
+    <string name="home_greeting_default">다시 오신 것을 환영합니다</string>
+    <string name="home_protection_active">보호 기능 활성화됨</string>
+    <string name="home_search_hint">번호 또는 이름 검색</string>
+    <string name="home_spam_protection_label">스팸 보호</string>
+    <string name="home_coming_soon">곧 제공 예정</string>
+    <string name="home_call_content_description">%1$s에게 전화하기</string>
+    <string name="home_spam_badge">스팸</string>
+
+    <!-- Dialpad -->
+    <string name="dialpad_back_content_description">뒤로</string>
+    <string name="dialpad_delete_content_description">삭제</string>
+    <string name="dialpad_call_content_description">전화</string>
+
+    <!-- Outgoing dialing -->
+    <string name="outgoing_status_ringing">벨이 울리는 중…</string>
+    <string name="outgoing_status_calling">전화 거는 중…</string>
+    <string name="outgoing_call_label">발신 전화</string>
+    <string name="outgoing_cancel_label">취소</string>
+
+    <!-- Shared call-screen tags/labels -->
+    <string name="call_tag_marked_spam">이전에 스팸으로 표시함</string>
+    <string name="call_tag_saved_contact">저장된 연락처</string>
+    <string name="call_minimize_content_description">최소화</string>
+    <string name="call_mute_label">음소거</string>
+    <string name="call_speaker_label">스피커</string>
+    <string name="incoming_call_label">수신 전화</string>
+    <string name="incoming_unknown_number">알 수 없는 번호</string>
+    <string name="incoming_slide_hint">두 버튼 중 하나를 위로 슬라이드하거나 탭하세요</string>
+    <string name="incoming_decline_label">거절</string>
+    <string name="incoming_answer_label">응답</string>
+    <string name="incoming_message_label">메시지</string>
+    <string name="incoming_block_label">차단</string>
+
+    <!-- Active call screen -->
+    <string name="active_call_unknown_caller">알 수 없음</string>
+    <string name="active_call_keypad_label">키패드</string>
+    <string name="active_call_add_call_label">통화 추가</string>
+    <string name="active_call_contact_label">연락처</string>
+    <string name="active_call_more_label">더보기</string>
+    <string name="active_call_end_call_label">통화 종료</string>
+    <string name="active_call_hide_keypad_content_description">키패드 숨기기</string>
+    <string name="active_call_merge_unsupported_fallback_label">해당 번호</string>
+    <string name="active_call_merge_unsupported_toast">%1$s 추가는 아직 지원되지 않습니다 — 통화 병합 기능은 추후 업데이트가 필요합니다</string>
+    <string name="active_call_more_options_toast">추가 옵션은 곧 제공될 예정입니다</string>
+
+    <!-- Common actions (reused across dialogs/sheets) -->
+    <string name="common_cancel">취소</string>
+    <string name="common_add">추가</string>
+
+    <!-- Add call sheet + manual number entry -->
+    <string name="add_call_title">통화 추가</string>
+    <string name="add_call_dial_number">번호 입력</string>
+    <string name="add_call_choose_contact">연락처 선택</string>
+    <string name="manual_number_entry_placeholder">전화번호</string>
+
+    <!-- Shared spam-report prompt (after-call + call-ended cards) -->
+    <string name="spam_report_question">이 전화가 스팸이었나요?</string>
+    <string name="spam_report_not_spam">아니요, 괜찮습니다</string>
+    <string name="spam_report_report_spam">스팸 신고</string>
+    <string name="call_status_ended">통화 종료됨</string>
+    <string name="call_status_missed">부재중 전화</string>
+
+    <!-- Spam categories -->
+    <string name="spam_category_telemarketing">텔레마케팅</string>
+    <string name="spam_category_scam">사기</string>
+    <string name="spam_category_robocall">로보콜</string>
+    <string name="spam_category_fraud">금융 사기</string>
+    <string name="spam_category_other">기타</string>
+
+    <!-- Call-ended card -->
+    <string name="call_ended_dismiss_content_description">닫기</string>
+    <string name="call_ended_action_call">전화</string>
+    <string name="call_ended_action_message">메시지</string>
+    <string name="call_ended_action_save">저장</string>
+    <string name="call_ended_action_contact">연락처</string>
+    <string name="call_ended_action_block">차단</string>
+    <string name="call_ended_action_unblock">차단 해제</string>
+    <string name="call_ended_view_profile">프로필 보기</string>
+    <string name="call_ended_no_additional_details">추가 정보가 없습니다</string>
+    <string name="call_ended_reported_as_spam">스팸으로 신고됨</string>
+    <string name="call_ended_status_line">%1$s · %2$s</string>
+    <string name="call_ended_marked_as_spam_subtext">스팸으로 표시됨 · %1$s</string>
+    <string name="call_ended_toast_number_blocked">번호가 차단되었습니다</string>
+    <string name="call_ended_toast_number_unblocked">번호 차단이 해제되었습니다</string>
+    <string name="call_ended_toast_block_update_failed">차단 상태를 업데이트하지 못했습니다</string>
+    <string name="call_ended_detail_category">카테고리: %1$s</string>
+    <string name="call_ended_detail_marked">%1$s 표시됨</string>
+    <plurals name="call_ended_detail_call_count">
+        <item quantity="other">이 번호와 %d회 통화</item>
+    </plurals>
+    <string name="call_ended_relative_just_now">방금 전</string>
+    <string name="call_ended_relative_minutes_ago">%1$d분 전</string>
+    <string name="call_ended_relative_hours_ago">%1$d시간 전</string>
+
+    <!-- Call banner (ongoing call while elsewhere in the app) -->
+    <string name="call_banner_ringing">%1$s에게 벨이 울리는 중</string>
+    <string name="call_banner_ongoing">통화 중 — %1$s · %2$s</string>
+    <string name="call_banner_calling">%1$s에게 전화 거는 중…</string>
+    <string name="call_banner_tap_to_return">%1$s · 탭하여 돌아가기</string>
+
+    <!-- Spam category picker -->
+    <string name="spam_category_picker_title">이 번호를 다음으로 신고</string>
+
+    <!-- All contacts screen -->
+    <string name="contacts_title">전체 연락처</string>
+    <string name="contacts_permission_message">전체 연락처 목록을 보려면 연락처 접근을 허용하세요.</string>
+    <string name="contacts_error_load_failed">연락처를 불러오지 못했습니다. 아래로 당기거나 이 화면을 다시 열어 재시도하세요.</string>
+    <string name="contacts_no_matches">\"%1$s\"에 대한 일치 항목이 없습니다</string>
+    <string name="contacts_none_found">연락처를 찾을 수 없습니다</string>
+    <string name="contacts_permission_heading">번호뿐만 아니라 이름도 확인하세요</string>
+    <string name="contacts_permission_subtext">이 기능을 사용하려면 연락처 접근을 허용하세요</string>
+
+    <!-- Contact detail screen -->
+    <string name="contact_detail_more_content_description">더보기</string>
+    <string name="contact_detail_copy_name">이름 복사</string>
+    <string name="contact_detail_copy_number">번호 복사</string>
+    <string name="contact_detail_unmark_spam">스팸 표시 해제</string>
+    <string name="contact_detail_mark_spam">스팸으로 표시</string>
+    <string name="contact_detail_copy_contact">연락처 복사</string>
+    <string name="contact_detail_delete_contact">연락처 삭제</string>
+    <string name="contact_detail_delete_dialog_title">%1$s님을 삭제하시겠습니까?</string>
+    <string name="contact_detail_delete_dialog_message">이 연락처가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="contact_detail_delete_fallback_name">이 연락처</string>
+    <string name="contact_detail_dialog_delete_button">삭제</string>
+    <string name="contact_detail_action_call">전화</string>
+    <string name="contact_detail_action_message">메시지</string>
+    <string name="contact_detail_action_block">차단</string>
+    <string name="contact_detail_action_unblock">차단 해제</string>
+    <string name="contact_detail_about_section_title">정보</string>
+    <string name="contact_detail_action_save">저장</string>
+    <string name="contact_detail_action_report">신고</string>
+    <string name="contact_detail_spam_marked_you">스팸으로 표시하셨습니다</string>
+    <string name="contact_detail_undo">실행 취소</string>
+    <string name="contact_detail_call_history_title">통화 기록</string>
+    <string name="contact_detail_filter_all">전체</string>
+    <string name="contact_detail_filter_missed">부재중</string>
+    <string name="contact_detail_no_missed_calls">부재중 전화가 없습니다</string>
+    <string name="contact_detail_no_call_history">아직 통화 기록이 없습니다</string>
+    <string name="contact_detail_call_type_incoming">수신 전화</string>
+    <string name="contact_detail_call_type_outgoing">발신 전화</string>
+    <string name="contact_detail_call_type_other">전화</string>
+    <string name="contact_detail_duration_minutes_seconds">%1$d분 %2$d초</string>
+    <string name="contact_detail_duration_seconds">%1$d초</string>
+    <string name="contact_detail_duration_dash">—</string>
+
+    <!-- Search screen -->
+    <string name="search_permission_message">저장된 연락처를 검색하려면 연락처 접근을 허용하세요.</string>
+    <string name="search_empty_prompt">연락처 또는 번호 검색</string>
+
+    <!-- No results screen -->
+    <string name="no_results_title">정보를 찾을 수 없습니다</string>
+    <string name="no_results_subtitle">이 번호는 아직 신고되거나 저장되지 않았습니다. 그래도 전화를 걸거나 연락처로 추가할 수 있습니다.</string>
+    <string name="no_results_add_to_contacts">연락처에 추가</string>
+
+    <!-- Blocked list screen -->
+    <string name="blocked_list_title">차단된 번호</string>
+    <string name="blocked_list_status_blocked">차단됨</string>
+    <string name="blocked_list_unblock_content_description">%1$s 차단 해제</string>
+    <string name="blocked_list_empty">차단된 번호가 없습니다</string>
+    <string name="blocked_list_unavailable_message">차단된 번호를 관리하려면 Callora를 기본 발신자 표시 앱으로 설정해야 합니다</string>
+    <string name="blocked_list_set_as_default">기본값으로 설정</string>
+
+    <!-- Block confirm screen -->
+    <string name="block_confirm_title">이 번호를 차단하시겠습니까?</string>
+    <string name="block_confirm_subtitle">이 번호로부터 더 이상 전화나 문자를 받지 않습니다.</string>
+    <string name="block_confirm_button">번호 차단</string>
+
+    <!-- Spam center screen -->
+    <string name="spam_center_title">스팸 센터</string>
+    <string name="spam_center_close_content_description">닫기</string>
+    <string name="spam_center_blocking_rules_title">차단 규칙</string>
+    <string name="spam_center_stat_blocked_week">이번 주 차단</string>
+    <string name="spam_center_stat_blocked_alltime">전체 차단</string>
+    <string name="spam_center_rule_auto_block_title">상위 스팸 발신자 자동 차단</string>
+    <string name="spam_center_rule_auto_block_subtitle">커뮤니티에서 신고한 번호</string>
+    <string name="spam_center_rule_telemarketers_title">텔레마케팅 차단</string>
+    <string name="spam_center_rule_telemarketers_subtitle">영업 및 광고성 전화</string>
+    <string name="spam_center_rule_international_title">국제 스팸 차단</string>
+    <string name="spam_center_rule_international_subtitle">알 수 없는 해외 번호</string>
+    <string name="spam_center_manage_blocked_list_title">차단 목록 관리</string>
+    <plurals name="spam_center_manage_blocked_list_subtitle">
+        <item quantity="other">수동으로 차단된 번호 %d개</item>
+    </plurals>
+
+    <!-- Settings screen -->
+    <string name="settings_title">설정</string>
+    <string name="settings_section_protection">보호</string>
+    <string name="settings_row_caller_id_spam">발신자 표시 및 스팸</string>
+    <string name="settings_row_blocked_numbers">차단된 번호</string>
+    <string name="settings_section_preferences">환경설정</string>
+    <string name="settings_row_dark_theme">다크 테마</string>
+    <string name="settings_row_language">언어</string>
+    <string name="settings_row_notifications">알림</string>
+    <string name="settings_section_support">지원</string>
+    <string name="settings_row_privacy_policy">개인정보 처리방침</string>
+    <string name="settings_row_help_feedback">도움말 및 피드백</string>
+    <string name="settings_feedback_email_subject">Callora 피드백</string>
+    <string name="settings_row_share_app">앱 공유</string>
+    <string name="settings_share_text">발신자 표시 및 스팸 차단 앱 Callora를 확인해 보세요: %1$s</string>
+    <string name="settings_share_chooser_title">Callora 공유</string>
+    <string name="settings_row_rate_us">평가하기</string>
+    <string name="settings_profile_fallback_name">내 프로필</string>
+
+    <!-- Notifications screen (shared top-bar title with notification settings) -->
+    <string name="notifications_title">알림</string>
+    <string name="notifications_sample_spam_blocked">오늘 스팸 전화 3건 차단됨</string>
+    <string name="notifications_sample_weekly_summary">주간 보호 요약이 준비되었습니다</string>
+    <string name="notifications_sample_db_updated">스팸 데이터베이스 업데이트됨</string>
+    <string name="notifications_sample_time_2h_ago">2시간 전</string>
+    <string name="notifications_sample_time_1d_ago">1일 전</string>
+    <string name="notifications_sample_time_2d_ago">2일 전</string>
+
+    <!-- Notification settings screen -->
+    <string name="notification_settings_missed_calls">부재중 전화</string>
+    <string name="notification_settings_spam_alerts">스팸 알림</string>
+    <string name="notification_settings_app_updates">앱 업데이트</string>
+    <string name="notification_settings_permission_heading">중요한 순간을 놓치지 마세요</string>
+    <string name="notification_settings_permission_subtext">이 기능을 사용하려면 알림을 허용하세요</string>
+
+    <!-- Profile screen -->
+    <string name="profile_title">내 프로필</string>
+    <string name="profile_unnamed">이름 없음</string>
+    <string name="profile_empty_title">이 기기에 설정된 프로필이 없습니다</string>
+    <string name="profile_empty_subtitle">휴대폰의 연락처 또는 설정 앱을 통해 기기 소유자로서 이름과 번호를 추가할 수 있습니다.</string>
+
+    <!-- Language select screen -->
+    <string name="language_select_title">언어를 선택하세요</string>
+    <string name="language_select_subtitle">나중에 설정에서 변경할 수 있습니다.</string>
+    <string name="language_select_continue">계속</string>
+    <string name="language_select_selected_content_description">선택됨</string>
+
+    <!-- Set default dialer screen -->
+    <string name="setdefault_card_title">통화 화면이 이렇게 표시됩니다</string>
+    <string name="setdefault_card_subtitle">Callora를 기본 전화 앱으로 설정하여 발신자를 자동으로 식별하고 스팸을 차단하세요.</string>
+    <string name="setdefault_feature_realtime_id">실시간 발신자 식별</string>
+    <string name="setdefault_feature_spam_blocked">커뮤니티에서 신고한 스팸 차단</string>
+    <string name="setdefault_feature_keep_contacts">기존 연락처를 모두 유지</string>
+    <string name="setdefault_mock_name">Rahul Sharma</string>
+    <string name="setdefault_mock_spam_title">스팸 의심</string>
+    <string name="setdefault_mock_badge_idd">확인됨</string>
+    <string name="setdefault_mock_badge_blocked">차단됨</string>
+
+    <!-- Offline screen -->
+    <string name="offline_title">오프라인 상태입니다</string>
+    <string name="offline_subtitle">발신자 조회에는 인터넷 연결이 필요합니다. 저장된 연락처는 평소대로 계속 작동합니다.</string>
+    <string name="offline_try_again">다시 시도</string>
+
+    <!-- Placeholder screen -->
+    <string name="placeholder_coming_soon">%1$s — 곧 제공 예정</string>
+
+    <!-- Missed call notification -->
+    <string name="missed_call_title_spam">부재중 전화 · 스팸 의심</string>
+    <string name="missed_call_subtitle_with_name">%1$s · %2$s</string>
+    <string name="missed_call_action_call_back">다시 전화하기</string>
+
+    <!-- Notification channels -->
+    <string name="notification_channel_missed_calls_name">부재중 전화</string>
+    <string name="notification_channel_missed_calls_description">부재중 전화를 알려드립니다</string>
+    <string name="notification_channel_ongoing_calls_name">통화 중 알림</string>
+    <string name="notification_channel_ongoing_calls_description">통화가 진행되는 동안 표시됩니다</string>
+
+    <!-- Ongoing call notification (InCallServiceImpl) -->
+    <string name="ongoing_call_notification_status_active">통화 중</string>
+    <string name="ongoing_call_notification_subtitle">%1$s · %2$s</string>
+    <string name="ongoing_call_notification_return_action">통화로 돌아가기</string>
+
+    <!-- Nav host: call-in-progress snackbar + CALL_PHONE permission prompt -->
+    <string name="call_in_progress_snackbar_message">이미 진행 중인 통화가 있습니다</string>
+    <string name="call_in_progress_view_action">보기</string>
+    <string name="call_phone_permission_heading">전화 걸기 및 관리</string>
+    <string name="call_phone_permission_subtext">전화를 걸려면 전화 접근을 허용하세요.</string>
+
+    <!-- Contact detail: snackbars + clipboard labels -->
+    <string name="contact_detail_snackbar_marked_spam">스팸으로 표시됨</string>
+    <string name="contact_detail_snackbar_removed_spam">스팸에서 제거됨</string>
+    <string name="contact_detail_snackbar_name_copied">이름이 복사되었습니다</string>
+    <string name="contact_detail_snackbar_number_copied">번호가 복사되었습니다</string>
+    <string name="contact_detail_snackbar_contact_copied">연락처가 복사되었습니다</string>
+    <string name="contact_detail_snackbar_delete_failed">연락처를 삭제하지 못했습니다</string>
+    <string name="contact_detail_clip_label_name">연락처 이름</string>
+    <string name="contact_detail_clip_label_number">전화번호</string>
+    <string name="contact_detail_clip_label_contact">연락처</string>
+</resources>

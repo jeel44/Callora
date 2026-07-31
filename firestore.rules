@@ -1,0 +1,121 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Keep in sync with SpamCategory in the Android app (domain/model/SpamCategory.kt) —
+    // a category outside this list is rejected by both spamReports and userReports writes.
+    function allowedCategories() {
+      return ['telemarketing', 'scam', 'robocall', 'fraud', 'other'];
+    }
+
+    // Keep in sync with SpamStatus.forCount() in the Android app — status is recomputed
+    // here from reportCount and the write is rejected if the client's value disagrees.
+    function expectedStatus(count) {
+      return count >= 50 ? 'confirmed_spam'
+        : count >= 10 ? 'likely_spam'
+        : count >= 3 ? 'possible_spam'
+        : 'none';
+    }
+
+    function categoryDelta(oldCategories, newCategories, cat) {
+      return (newCategories[cat] is number ? newCategories[cat] : 0)
+           - (oldCategories[cat] is number ? oldCategories[cat] : 0);
+    }
+
+    // True only if exactly one allowed category went up by exactly 1 and every other
+    // category is unchanged (a dropped or decremented key shows up as a non-zero delta
+    // elsewhere and fails this too). Enumerated explicitly instead of using map diff so
+    // the "which key moved, by how much" logic is easy to audit key-by-key.
+    function isSingleCategoryIncrement(oldCategories, newCategories) {
+      return newCategories.keys().hasOnly(allowedCategories())
+        && (
+          (categoryDelta(oldCategories, newCategories, 'telemarketing') == 1
+            && categoryDelta(oldCategories, newCategories, 'scam') == 0
+            && categoryDelta(oldCategories, newCategories, 'robocall') == 0
+            && categoryDelta(oldCategories, newCategories, 'fraud') == 0
+            && categoryDelta(oldCategories, newCategories, 'other') == 0)
+          ||
+          (categoryDelta(oldCategories, newCategories, 'scam') == 1
+            && categoryDelta(oldCategories, newCategories, 'telemarketing') == 0
+            && categoryDelta(oldCategories, newCategories, 'robocall') == 0
+            && categoryDelta(oldCategories, newCategories, 'fraud') == 0
+            && categoryDelta(oldCategories, newCategories, 'other') == 0)
+          ||
+          (categoryDelta(oldCategories, newCategories, 'robocall') == 1
+            && categoryDelta(oldCategories, newCategories, 'telemarketing') == 0
+            && categoryDelta(oldCategories, newCategories, 'scam') == 0
+            && categoryDelta(oldCategories, newCategories, 'fraud') == 0
+            && categoryDelta(oldCategories, newCategories, 'other') == 0)
+          ||
+          (categoryDelta(oldCategories, newCategories, 'fraud') == 1
+            && categoryDelta(oldCategories, newCategories, 'telemarketing') == 0
+            && categoryDelta(oldCategories, newCategories, 'scam') == 0
+            && categoryDelta(oldCategories, newCategories, 'robocall') == 0
+            && categoryDelta(oldCategories, newCategories, 'other') == 0)
+          ||
+          (categoryDelta(oldCategories, newCategories, 'other') == 1
+            && categoryDelta(oldCategories, newCategories, 'telemarketing') == 0
+            && categoryDelta(oldCategories, newCategories, 'scam') == 0
+            && categoryDelta(oldCategories, newCategories, 'robocall') == 0
+            && categoryDelta(oldCategories, newCategories, 'fraud') == 0)
+        );
+    }
+
+    match /spamReports/{phoneNumber} {
+      // Public read — needed for incoming-call lookup. Every field a client could try to
+      // tamper with is still locked down below; read access itself exposes nothing private,
+      // since this collection never contains anything tied to a specific reporter.
+      allow read: if true;
+
+      // First-ever report for a number: reportCount must start at exactly 1, exactly one
+      // category at exactly 1, both timestamps stamped by the server this instant.
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['reportCount', 'categories', 'firstReportedAt', 'lastReportedAt', 'status'])
+                    && request.resource.data.reportCount == 1
+                    && isSingleCategoryIncrement({}, request.resource.data.categories)
+                    && request.resource.data.firstReportedAt == request.time
+                    && request.resource.data.lastReportedAt == request.time
+                    && request.resource.data.status == expectedStatus(1);
+
+      // Every later report: reportCount must go up by exactly 1 (never set directly to an
+      // arbitrary number), exactly one category up by exactly 1, firstReportedAt frozen,
+      // lastReportedAt bumped to now, and status must match what the new count implies.
+      allow update: if request.resource.data.keys().hasOnly(
+                        ['reportCount', 'categories', 'firstReportedAt', 'lastReportedAt', 'status'])
+                    && request.resource.data.reportCount == resource.data.reportCount + 1
+                    && isSingleCategoryIncrement(resource.data.categories, request.resource.data.categories)
+                    && request.resource.data.firstReportedAt == resource.data.firstReportedAt
+                    && request.resource.data.lastReportedAt == request.time
+                    && request.resource.data.status == expectedStatus(request.resource.data.reportCount);
+
+      allow delete: if false;
+    }
+
+    match /userReports/{reportId} {
+      // Direct-path get() only ("does my own report doc exist?"). list is blocked so no
+      // client can enumerate every report or map reporterDeviceId -> phone numbers reported.
+      // Note: without Firebase Auth there is no server-verifiable caller identity, so this
+      // relies on reporterDeviceId being an unguessable client-generated UUID — a client that
+      // already knows a specific id_phoneNumber pair can still get() that one document.
+      allow get: if true;
+      allow list: if false;
+
+      // Composite doc ID (reporterDeviceId_phoneNumber) must match the data being written,
+      // so a client cannot create a report and attribute it to someone else's device id.
+      allow create: if request.resource.data.keys().hasOnly(
+                        ['phoneNumber', 'reporterDeviceId', 'category', 'reportedAt'])
+                    && request.resource.data.reporterDeviceId is string
+                    && request.resource.data.phoneNumber is string
+                    && request.resource.data.category in allowedCategories()
+                    && reportId == request.resource.data.reporterDeviceId + '_' + request.resource.data.phoneNumber
+                    && request.resource.data.reportedAt == request.time;
+
+      // Create-only, forever. This is the actual dedup mechanism: a second report for the
+      // same (device, number) pair is a create at the same doc ID, which Firestore rejects
+      // outright as "already exists" before these rules even run — not an update to allow.
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

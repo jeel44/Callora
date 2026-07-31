@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Design tokens live in ui/theme/Color.kt (Compose). This file only holds
+         colors the classic Android resource system needs (e.g. app icon backgrounds). -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <!-- Matches CallScreenComponents.kt's KnownCallGradientTop — used only as the incoming-call
+         window background (see Theme.Callora.IncomingCall) so the system's starting-window
+         frame doesn't flash white before Compose renders the actual call-screen gradient. -->
+    <color name="incoming_call_window_background">#FF16233A</color>
+
+    <!-- Mirror ui/theme/Color.kt's LightCanvas/DarkCanvas (Compose can't be referenced from this
+         classic-resource-system theme). Used as Theme.Callora/Theme.Callora.Dark's
+         android:windowBackground so the transient frame AppCompatDelegate.setApplicationLocales()'s
+         activity recreate() briefly shows already matches the real Compose canvas, instead of
+         flashing the unrelated default AppCompat background color. -->
+    <color name="window_background_light">#FFE7EDF3</color>
+    <color name="window_background_dark">#FF0E1622</color>
+</resources>
