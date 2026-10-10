@@ -95,6 +95,16 @@ fun normalizeDialedNumber(input: String): String {
 }
 
 /**
+ * Loads libphonenumber's metadata (the PhoneNumberUtil singleton plus the India region file) so
+ * the first real [normalizeDialedNumber]/[formatPhoneNumberForDisplay] call — which the Dialpad
+ * makes synchronously while composing the first typed digit — doesn't pay that one-off load on
+ * the main thread. Blocking — call from a background dispatcher.
+ */
+fun prewarmPhoneNumberMetadata() {
+    normalizeDialedNumber("9876543210")
+}
+
+/**
  * Formats a phone number for display via libphonenumber — this is the single shared formatting
  * utility; every screen showing a phone number should call this rather than hand-rolling
  * dashes/parens/spaces. Display-only: callers must keep using the raw form (or

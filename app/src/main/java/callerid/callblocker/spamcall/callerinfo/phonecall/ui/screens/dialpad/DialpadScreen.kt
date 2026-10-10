@@ -133,7 +133,7 @@ fun DialpadScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = formatDialpadInput(typedNumber),
+                            text = remember(typedNumber) { formatDialpadInput(typedNumber) },
                             style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
@@ -253,7 +253,7 @@ private fun MatchingContactRow(contact: Contact, onClick: () -> Unit) {
                 maxLines = 1,
             )
             Text(
-                text = formatPhoneNumberForDisplay(contact.phoneNumber),
+                text = remember(contact.phoneNumber) { formatPhoneNumberForDisplay(contact.phoneNumber) },
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
                 color = MaterialTheme.extendedColors.onSurfaceFaint,
                 maxLines = 1,

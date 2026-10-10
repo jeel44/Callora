@@ -19,9 +19,21 @@ private val ONBOARDING_COMPLETE_KEY = booleanPreferencesKey("onboarding_complete
 class OnboardingRepository {
 
     suspend fun isOnboardingComplete(context: Context): Boolean =
-        context.onboardingDataStore.data.first()[ONBOARDING_COMPLETE_KEY] ?: false
+        (context.onboardingDataStore.data.first()[ONBOARDING_COMPLETE_KEY] ?: false)
+            .also { cachedIsOnboardingComplete = it }
 
     suspend fun markOnboardingComplete(context: Context) {
         context.onboardingDataStore.edit { prefs -> prefs[ONBOARDING_COMPLETE_KEY] = true }
+        cachedIsOnboardingComplete = true
+    }
+
+    companion object {
+        /** Last value read or written this process, null until the first read finishes. Safe to
+         * trust synchronously since the flag only ever goes false -> true, and that write goes
+         * through [markOnboardingComplete]. Normally already set by CalloraApplication's prewarm
+         * by the time CalloraNavHost first composes — see resolveStartDestinationIfReady. */
+        @Volatile
+        var cachedIsOnboardingComplete: Boolean? = null
+            private set
     }
 }

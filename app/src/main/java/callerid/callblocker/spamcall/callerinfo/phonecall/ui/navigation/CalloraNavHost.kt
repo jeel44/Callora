@@ -43,6 +43,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.StartupTimer
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.OnboardingRepository
@@ -112,12 +113,21 @@ private data class SimPickerRequest(val phoneNumber: String, val accounts: List<
  * NavHost's very first destination is already correct; that LaunchedEffect remains in place as
  * a fallback for a call that starts ringing after this has already resolved.
  */
-private suspend fun resolveStartDestination(context: Context): String {
+private suspend fun resolveStartDestination(context: Context): String =
+    startDestinationFor(context, OnboardingRepository().isOnboardingComplete(context))
+
+/** Synchronous variant for the first composition: CalloraApplication's prewarm has normally
+ * cached the onboarding flag by then, so the very first frame can be the real start destination
+ * instead of a blank placeholder frame followed by a second, full composition. null when the
+ * flag isn't cached yet — the async [resolveStartDestination] then takes over. */
+private fun resolveStartDestinationIfReady(context: Context): String? =
+    OnboardingRepository.cachedIsOnboardingComplete?.let { startDestinationFor(context, it) }
+
+private fun startDestinationFor(context: Context, onboardingComplete: Boolean): String {
     val callInfo = CallRepository.callState.value
     if (callInfo.state == CallUiState.RINGING && callInfo.isIncoming) {
         return Routes.INCOMING_CALL
     }
-    val onboardingComplete = OnboardingRepository().isOnboardingComplete(context)
     if (!onboardingComplete) return Routes.SPLASH
     return if (!isDialerRoleHeld(context)) Routes.SET_DEFAULT else Routes.HOME
 }
@@ -171,14 +181,20 @@ fun CalloraNavHost(
         onDispose { navController.removeOnDestinationChangedListener(listener) }
     }
 
+    // Resolved synchronously on the first composition when the onboarding-complete flag is
+    // already cached (the normal cold-start case — see resolveStartDestinationIfReady); otherwise
     // null while the async DataStore read (onboarding-complete flag) + sync system checks
     // (dialer role, permissions) are still resolving. Rendered as a blank, theme-background
     // Surface rather than the NavHost itself — this is what prevents a visible flash of Home (or
     // any other wrong screen) before redirecting; the resolution is a single local DataStore read
     // plus a couple of ContextCompat calls, so in practice this is on-screen for well under a
     // frame.
-    val startDestination by produceState<String?>(initialValue = null, context) {
-        value = resolveStartDestination(context)
+    val startDestination by produceState(initialValue = remember(context) { resolveStartDestinationIfReady(context) }, context) {
+        if (value == null) {
+            StartupTimer.mark("resolveStartDestination async start")
+            value = resolveStartDestination(context)
+        }
+        StartupTimer.mark("start destination = $value")
     }
 
     val resolvedStartDestination = startDestination

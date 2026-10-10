@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChevronRight
@@ -42,9 +45,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -105,7 +111,7 @@ fun SpamCenterScreen(
                         .fillMaxSize()
                         .padding(innerPadding)
                         .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(ItemGap),
                 ) {
                     item { StatsCard() }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -160,7 +166,7 @@ fun SpamCenterScreen(
                                 color = MaterialTheme.extendedColors.onSurfaceFaint,
                             )
                         }
-                        item { SpamCallsCard(calls = calls, onOpenContactDetail = onOpenContactDetail) }
+                        spamCallItems(calls = calls, onOpenContactDetail = onOpenContactDetail)
                     }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
@@ -323,37 +329,75 @@ private fun ManageBlockedListRow(blockedCount: Int, onClick: () -> Unit) {
     }
 }
 
-/** Spam calls as the same flat rows Home uses (one card, day headers, dividers); tapping one
- * opens Contact Detail, where the number can be unmarked. */
-@Composable
-private fun SpamCallsCard(calls: List<RecentCallEntry>, onOpenContactDetail: (phoneNumber: String) -> Unit) {
-    val zone = ZoneId.systemDefault()
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ListItemShape)
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 14.dp, vertical = 4.dp),
-    ) {
-        if (calls.isEmpty()) {
+private val ItemGap = 10.dp
+
+private val SpamCardTopShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
+private val SpamCardBottomShape = RoundedCornerShape(bottomStart = 18.dp, bottomEnd = 18.dp)
+
+/**
+ * Spam calls as the same flat rows Home uses (one card, day headers, dividers); tapping one opens
+ * Contact Detail, where the number can be unmarked. One lazy item per call — the card used to be a
+ * single item laying out all (up to 50) rows at once, so scrolling it into view composed and
+ * measured every row in one frame and kept them all composed even while off-screen. Each row
+ * draws its own slice of the card (rounded top on the first, rounded bottom on the last), and rows
+ * after the first are pulled up over the list's [ItemGap] so the card still reads as one surface.
+ */
+private fun LazyListScope.spamCallItems(
+    calls: List<RecentCallEntry>,
+    onOpenContactDetail: (phoneNumber: String) -> Unit,
+) {
+    if (calls.isEmpty()) {
+        item {
             Text(
                 text = stringResource(R.string.spam_center_no_spam_calls),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.extendedColors.mutedText,
-                modifier = Modifier.padding(vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(ListItemShape)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 14.dp, vertical = 4.dp)
+                    .padding(vertical = 12.dp),
             )
-            return@Column
         }
-        var previousDay: LocalDate? = null
-        calls.forEach { call ->
-            val day = Instant.ofEpochMilli(call.timestamp).atZone(zone).toLocalDate()
-            if (day != previousDay) {
+        return
+    }
+    val zone = ZoneId.systemDefault()
+    val days = calls.map { Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate() }
+    itemsIndexed(calls, key = { _, call -> "spam-call-${call.id}" }, contentType = { _, _ -> "spam-call" }) { index, call ->
+        val isFirst = index == 0
+        val isLast = index == calls.lastIndex
+        val shape = when {
+            isFirst && isLast -> ListItemShape
+            isFirst -> SpamCardTopShape
+            isLast -> SpamCardBottomShape
+            else -> RectangleShape
+        }
+        Column(
+            modifier = Modifier
+                .then(if (isFirst) Modifier else Modifier.overlapPreviousItem(ItemGap))
+                .fillMaxWidth()
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 14.dp)
+                .padding(top = if (isFirst) 4.dp else 0.dp, bottom = if (isLast) 4.dp else 0.dp),
+        ) {
+            if (isFirst || days[index] != days[index - 1]) {
                 CallLogDayHeader(timestamp = call.timestamp)
             } else {
                 CallLogDivider()
             }
-            previousDay = day
             CallLogRow(call = call, count = 1, onClick = { onOpenContactDetail(call.phoneNumber) })
         }
+    }
+}
+
+/** Draws this item [gap] higher and reports it [gap] shorter, cancelling the list's spacedBy gap
+ * above it so it sits flush against the previous item. */
+private fun Modifier.overlapPreviousItem(gap: Dp): Modifier = layout { measurable, constraints ->
+    val gapPx = gap.roundToPx()
+    val placeable = measurable.measure(constraints)
+    layout(placeable.width, (placeable.height - gapPx).coerceAtLeast(0)) {
+        placeable.place(0, -gapPx)
     }
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.prewarmPhoneNumberMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val MATCH_DEBOUNCE_MILLIS = 150L
@@ -53,16 +55,25 @@ class DialpadViewModel(application: Application) : AndroidViewModel(application)
         .debounce(MATCH_DEBOUNCE_MILLIS)
         .distinctUntilChanged()
         .mapLatest { typed ->
-            val digits = contactMatchDigits(typed)
-            if (digits.isBlank()) {
-                emptyList()
-            } else {
-                withContext(Dispatchers.IO) {
+            // contactMatchDigits runs libphonenumber parsing too, so it stays off the main
+            // thread along with the provider query.
+            withContext(Dispatchers.IO) {
+                val digits = contactMatchDigits(typed)
+                if (digits.isBlank()) {
+                    emptyList()
+                } else {
                     contactsRepository.getContactsMatchingDigits(getApplication(), digits)
                 }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // The screen formats the typed number synchronously while composing, so load
+        // libphonenumber's metadata now — well before the user's first key press — rather than
+        // on the main thread at that first press.
+        viewModelScope.launch(Dispatchers.Default) { prewarmPhoneNumberMetadata() }
+    }
 
     /** Called on every dialpad key press/backspace/clear so [matchingContacts] tracks the field. */
     fun onTypedDigitsChanged(digits: String) {

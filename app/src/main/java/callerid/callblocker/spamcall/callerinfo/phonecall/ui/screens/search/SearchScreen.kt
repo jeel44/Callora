@@ -257,7 +257,7 @@ private fun SearchResultRow(contact: Contact, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = formatPhoneNumberForDisplay(contact.phoneNumber),
+                text = remember(contact.phoneNumber) { formatPhoneNumberForDisplay(contact.phoneNumber) },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.extendedColors.onSurfaceFaint,
             )

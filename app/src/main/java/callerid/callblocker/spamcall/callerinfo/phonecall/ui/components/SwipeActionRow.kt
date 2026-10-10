@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -67,16 +67,14 @@ fun SwipeActionRow(
         return
     }
 
-    var rowWidthPx by remember { mutableStateOf(0f) }
+    // Only read while a swipe is in progress (below, and via PointerInputScope.size in the
+    // gesture itself). Reading it unconditionally during composition made every row that scrolled
+    // into view compose twice — once, then again when onSizeChanged first reported its width —
+    // and restarted its gesture detector, on every scroll frame that brought in a new row.
+    var rowWidthPx by remember { mutableFloatStateOf(0f) }
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-
-    val triggerPx = rowWidthPx * TRIGGER_FRACTION
-    val progress = if (triggerPx > 0f) (abs(offsetX.value) / triggerPx).coerceIn(0f, 1f) else 0f
-    val triggered = triggerPx > 0f && abs(offsetX.value) >= triggerPx
-    val iconScale = if (triggered) 1.3f else 0.85f + 0.3f * progress
-    val iconAlpha = 0.5f + 0.5f * progress
 
     Box(
         modifier = modifier
@@ -96,6 +94,11 @@ fun SwipeActionRow(
                     },
                 ),
         ) {
+            val triggerPx = if (offsetX.value != 0f) rowWidthPx * TRIGGER_FRACTION else 0f
+            val progress = if (triggerPx > 0f) (abs(offsetX.value) / triggerPx).coerceIn(0f, 1f) else 0f
+            val triggered = triggerPx > 0f && abs(offsetX.value) >= triggerPx
+            val iconScale = if (triggered) 1.3f else 0.85f + 0.3f * progress
+            val iconAlpha = 0.5f + 0.5f * progress
             if (offsetX.value > 0f) {
                 Box(
                     modifier = Modifier
@@ -134,12 +137,13 @@ fun SwipeActionRow(
         Box(
             modifier = Modifier
                 .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                .pointerInput(rowWidthPx) {
+                .pointerInput(Unit) {
                     var wasTriggered = false
                     detectHorizontalDragGestures(
                         onDragStart = { wasTriggered = false },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
+                            val rowWidthPx = size.width.toFloat()
                             val newValue = (offsetX.value + dragAmount).coerceIn(-rowWidthPx, rowWidthPx)
                             scope.launch { offsetX.snapTo(newValue) }
                             val nowTriggered = rowWidthPx > 0f && abs(newValue) >= rowWidthPx * TRIGGER_FRACTION
@@ -152,6 +156,7 @@ fun SwipeActionRow(
                             wasTriggered = nowTriggered
                         },
                         onDragEnd = {
+                            val rowWidthPx = size.width.toFloat()
                             val finalValue = offsetX.value
                             val didTrigger = rowWidthPx > 0f && abs(finalValue) >= rowWidthPx * TRIGGER_FRACTION
                             scope.launch { offsetX.animateTo(0f, animationSpec = spring()) }

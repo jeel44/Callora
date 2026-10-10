@@ -1,6 +1,7 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.components
 
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
@@ -87,7 +88,12 @@ private fun BannerAd(adView: AdView, height: Dp, onBound: (AdView) -> Unit) {
             .fillMaxWidth()
             .height(height)
             .background(MaterialTheme.colorScheme.surface),
-        factory = { context -> FrameLayout(context) },
+        // Hardware layer: the AdView's WebView is drawn by a GL functor, which otherwise re-runs on
+        // every frame this window renders — including every frame of a Home list scroll, where it
+        // was the single largest cause of dropped frames (up to ~49ms per frame on an SM-A226B).
+        // Cached in a layer, it's only re-rendered when the ad itself invalidates. Display-only:
+        // loading, refresh and AdView lifetimes are unaffected.
+        factory = { context -> FrameLayout(context).apply { setLayerType(View.LAYER_TYPE_HARDWARE, null) } },
         // A new [adView] is stacked on top of the old one, which is only removed (and then
         // destroyed by the controller) once the new one has had time to draw — no blank frame.
         update = { container ->

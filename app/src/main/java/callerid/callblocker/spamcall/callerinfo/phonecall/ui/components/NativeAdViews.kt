@@ -41,9 +41,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -58,23 +60,50 @@ import com.google.android.gms.ads.nativead.MediaView
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdView
 
-// Everything in native_ad_large.xml except the media: 10dp padding x2, 36dp header, 8dp gaps,
-// ~17dp one-line body, 6dp + ~17dp rating/store row, 40dp CTA. Kept this tight so the template
-// (media at AdMob's 120dp minimum or more) fits the ~280dp left on a normal-height phone in both
-// Language Select's and onboarding's slots. The shimmer below uses the same numbers.
-private val LargeTemplateFixedHeight = 160.dp
-private val MinMediaHeight = AdMediaFrameLayout.MIN_MEDIA_HEIGHT_DP.dp
+// native_ad_large.xml's non-media rows, split by what can be dropped when space is short. Text
+// line heights are in sp so the fit check tracks the user's font scale (measured at scale 1.0
+// on-device: 18dp body line, 16dp rating/store line - the template's total non-media height
+// there is exactly 160dp).
 private val CardPadding = 10.dp
-
-/** Smallest slot the large template fits in without clipping anything (AdMob min media size). */
-val NativeAdSlotMinHeight: Dp = LargeTemplateFixedHeight + MinMediaHeight
+private val TemplateRequiredHeight = CardPadding * 2 + 36.dp + 8.dp + 8.dp + 40.dp // header, media gap, CTA gap + CTA
+private val BodyGap = 8.dp
+private val BodyLineHeight = 18.sp
+private val StoreRowGap = 6.dp
+private val StoreRowLineHeight = 16.sp
+private val MinMediaHeight = AdMediaFrameLayout.MIN_MEDIA_HEIGHT_DP.dp
 
 /**
- * The one shared inline native ad slot (Language Select + the three onboarding intro screens):
- * nothing for [NativeAdSlotState.Hidden], a shimmer shaped like the large template while the first
- * ad loads, then the ad itself in the large template. When given a bounded height (e.g. a
- * weighted gap), the media shrinks to fit it (down to AdMob's 120dp minimum) instead of
- * clipping the CTA; a slot too short for even that renders nothing rather than a cut-off ad.
+ * How much of the large template a slot has room for. AdMob requires the headline, CTA, icon,
+ * attribution and AdChoices (all in the required part), only recommends the body, and treats
+ * star rating/store/price as optional (support.google.com/admob/answer/6240809) - so a slot short
+ * of the full template drops the rating/store row first, then the body, before giving up.
+ *
+ * This replaces a single all-or-nothing 280dp cutoff, which sat exactly at the slot height of the
+ * one phone it was tuned on (SM-A226B, 856dp tall): any screen with even slightly less height in
+ * dp - e.g. an SM-S908N at 823dp, despite being the "bigger" phone - got no ad at all.
+ */
+private enum class NativeAdFit { Full, NoStoreRow, Minimal }
+
+/** Non-media height of the template at [fit], for the current density and font scale. */
+private fun Density.nonMediaHeight(fit: NativeAdFit): Dp {
+    var height = TemplateRequiredHeight
+    if (fit != NativeAdFit.Minimal) height += BodyGap + BodyLineHeight.toDp()
+    if (fit == NativeAdFit.Full) height += StoreRowGap + StoreRowLineHeight.toDp()
+    return height
+}
+
+/** The fullest [NativeAdFit] whose template (media at AdMob's minimum) fits in [maxHeight], or
+ * null if not even [NativeAdFit.Minimal] does. */
+private fun Density.fitFor(maxHeight: Dp): NativeAdFit? =
+    NativeAdFit.entries.firstOrNull { maxHeight >= nonMediaHeight(it) + MinMediaHeight }
+
+/**
+ * The one shared inline native ad slot (Language Select, the three onboarding intro screens, Call
+ * Ended): nothing for [NativeAdSlotState.Hidden], a shimmer shaped like the large template while
+ * the first ad loads, then the ad itself in the large template. When given a bounded height (e.g.
+ * a weighted gap), the media shrinks to fit it (down to AdMob's 120dp minimum) instead of
+ * clipping the CTA; below that the optional rows are dropped (see [NativeAdFit]), and only a slot
+ * too short for even the minimal template renders nothing rather than a cut-off ad.
  * Loading, refresh timing and ad lifetimes all live in [InlineNativeAdController]; this only
  * draws its state and tells it when the screen is visible and when a new ad is bound.
  */
@@ -111,28 +140,31 @@ private fun NativeAdSlotContent(
     if (state == NativeAdSlotState.Hidden) return
     BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val bounded = constraints.hasBoundedHeight
-        if (bounded && maxHeight < NativeAdSlotMinHeight) return@BoxWithConstraints
+        val density = LocalDensity.current
+        val fit = if (bounded) density.fitFor(maxHeight) ?: return@BoxWithConstraints else NativeAdFit.Full
         when (state) {
             NativeAdSlotState.Loading -> {
                 val preferredMedia = (maxWidth - CardPadding * 2) * 9f / 16f
                 val mediaHeight = if (bounded) {
-                    min(preferredMedia, maxHeight - LargeTemplateFixedHeight)
+                    min(preferredMedia, maxHeight - density.nonMediaHeight(fit))
                 } else {
                     preferredMedia
                 }
                 NativeAdShimmer(
                     mediaHeight = maxOf(mediaHeight, MinMediaHeight),
+                    showBody = fit != NativeAdFit.Minimal,
+                    showStoreRow = fit == NativeAdFit.Full,
                     modifier = Modifier.clip(ListItemShape).background(MaterialTheme.colorScheme.surface),
                 )
             }
-            is NativeAdSlotState.Loaded -> LargeNativeAd(ad = state.ad, onBound = onBound)
+            is NativeAdSlotState.Loaded -> LargeNativeAd(ad = state.ad, fit = fit, onBound = onBound)
             NativeAdSlotState.Hidden -> Unit
         }
     }
 }
 
 @Composable
-private fun LargeNativeAd(ad: NativeAd, onBound: (NativeAd) -> Unit) {
+private fun LargeNativeAd(ad: NativeAd, fit: NativeAdFit, onBound: (NativeAd) -> Unit) {
     val colors = rememberNativeAdColors()
     val cornerRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
     AndroidView(
@@ -144,12 +176,14 @@ private fun LargeNativeAd(ad: NativeAd, onBound: (NativeAd) -> Unit) {
             LayoutInflater.from(context).inflate(R.layout.native_ad_large, null) as NativeAdView
         },
         // Swapping [ad] rebinds the SAME view in place, so the old creative stays up until the new
-        // one is bound — no blank frame (Language Select's reload-on-selection relies on this).
+        // one is bound - no blank frame (Language Select's reload-on-selection relies on this).
         update = { view ->
             if (view.tag !== ad) {
                 bindNativeAd(view, ad, colors, cornerRadiusPx)
                 view.tag = ad
             }
+            // After binding (which shows every asset the ad has), and again whenever [fit] changes.
+            applyNativeAdFit(view, ad, fit)
             onBound(ad)
         },
         // Releases the view's own ad tracking; the NativeAd itself is owned (and destroyed) by the
@@ -159,13 +193,28 @@ private fun LargeNativeAd(ad: NativeAd, onBound: (NativeAd) -> Unit) {
     )
 }
 
+/** Hides the rows [fit] has no room for; shows the ones the ad provides when there is room. */
+private fun applyNativeAdFit(view: NativeAdView, ad: NativeAd, fit: NativeAdFit) {
+    val body = view.findViewById<View>(R.id.native_ad_body)
+    body.visibility = if (fit != NativeAdFit.Minimal && !ad.body.isNullOrBlank()) View.VISIBLE else View.GONE
+    val storeRow = view.findViewById<View>(R.id.native_ad_store_row)
+    val hasStoreAssets = listOf(R.id.native_ad_stars, R.id.native_ad_price, R.id.native_ad_store)
+        .any { view.findViewById<View>(it).visibility == View.VISIBLE }
+    storeRow.visibility = if (fit == NativeAdFit.Full && hasStoreAssets) View.VISIBLE else View.GONE
+}
+
 /**
  * Animated placeholder shaped like the large template: header (icon circle + two lines), media
  * block, the body line, the rating/store line, CTA. [mediaHeight] null = the media block takes
  * all remaining height (the full-screen overlay); otherwise sized like the real media will be.
  */
 @Composable
-fun NativeAdShimmer(mediaHeight: Dp?, modifier: Modifier = Modifier) {
+fun NativeAdShimmer(
+    mediaHeight: Dp?,
+    modifier: Modifier = Modifier,
+    showBody: Boolean = true,
+    showStoreRow: Boolean = true,
+) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val brush = rememberAdShimmerBrush(widthPx = constraints.maxWidth.toFloat())
         Column(modifier = Modifier.padding(CardPadding)) {
@@ -180,10 +229,14 @@ fun NativeAdShimmer(mediaHeight: Dp?, modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.height(8.dp))
             ShimmerBlock(brush, RoundedCornerShape(10.dp), mediaModifier(mediaHeight))
-            Spacer(Modifier.height(10.dp))
-            ShimmerBlock(brush, RoundedCornerShape(4.dp), Modifier.fillMaxWidth(0.85f).height(13.dp))
-            Spacer(Modifier.height(8.dp))
-            ShimmerBlock(brush, RoundedCornerShape(4.dp), Modifier.fillMaxWidth(0.4f).height(13.dp))
+            if (showBody) {
+                Spacer(Modifier.height(10.dp))
+                ShimmerBlock(brush, RoundedCornerShape(4.dp), Modifier.fillMaxWidth(0.85f).height(13.dp))
+            }
+            if (showStoreRow) {
+                Spacer(Modifier.height(8.dp))
+                ShimmerBlock(brush, RoundedCornerShape(4.dp), Modifier.fillMaxWidth(0.4f).height(13.dp))
+            }
             Spacer(Modifier.height(10.dp))
             ShimmerBlock(brush, RoundedCornerShape(10.dp), Modifier.fillMaxWidth().height(40.dp))
         }

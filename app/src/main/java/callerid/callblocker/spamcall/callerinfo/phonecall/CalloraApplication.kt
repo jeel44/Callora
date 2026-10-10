@@ -17,9 +17,7 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
  * Pre-warms the onboarding-complete DataStore read as early in the process lifecycle as
@@ -35,14 +33,15 @@ class CalloraApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
+        StartupTimer.mark("Application.onCreate start")
         super.onCreate()
         applicationScope.launch { OnboardingRepository().isOnboardingComplete(this@CalloraApplication) }
         // Same idea for Home's saved recent-calls snapshot: the disk read starts at process launch
         // (off the main thread) instead of at HomeViewModel creation, so on a cold start — ~2s
         // before Home's first frame on a mid-range device — the rows are already in memory and
         // Home paints them on its first frame instead of an empty RECENT section.
-        RecentCallsSnapshotStore.preload(this)
-        applyPersistedLanguage()
+        StartupTimer.section("RecentCallsSnapshotStore.preload") { RecentCallsSnapshotStore.preload(this) }
+        StartupTimer.section("applyPersistedLanguage") { applyPersistedLanguage() }
         // Start in the system's light/dark mode — the cold-start splash (Theme.Callora.Starting)
         // is drawn from values/values-night before any app code runs, so this is what keeps the
         // first Compose frame on the same canvas instead of flipping light<->dark after it.
@@ -54,37 +53,39 @@ class CalloraApplication : Application() {
         // future consent toggle has a single call site to wire up instead of relying on the SDK
         // default. Left enabled for debug builds too — Settings' debug-only test-crash trigger
         // (see SettingsScreen.kt) needs a report to actually reach the Crashlytics console.
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        StartupTimer.section("Crashlytics.setCollectionEnabled") {
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        }
         // Same implicit-init story as Crashlytics above — no FirebaseApp.initializeApp() needed.
         // AnalyticsHelper just gives the rest of the app a Context-free way to reach this instance.
-        AnalyticsHelper.initialize(this)
-        if (BuildConfig.DEBUG) {
-            // Verification-only: confirms the Analytics pipeline is wired up end to end. Not a
-            // real product event — never fires in release builds. Real events (set_default_dialer,
-            // call-completed, spam-block, etc.) come later.
-            AnalyticsHelper.logEvent("app_analytics_initialized")
+        StartupTimer.section("AnalyticsHelper.initialize") {
+            AnalyticsHelper.initialize(this)
+            if (BuildConfig.DEBUG) {
+                // Verification-only: confirms the Analytics pipeline is wired up end to end. Not a
+                // real product event — never fires in release builds. Real events (set_default_dialer,
+                // call-completed, spam-block, etc.) come later.
+                AnalyticsHelper.logEvent("app_analytics_initialized")
+            }
         }
-        createMissedCallNotificationChannel()
+        StartupTimer.section("createMissedCallNotificationChannel") { createMissedCallNotificationChannel() }
         // Ads: Remote Config fetch + MobileAds init both start here, fully async (MobileAds on
         // applicationScope's Dispatchers.Default per Google's off-main-thread guidance), so
         // neither delays startup. AppOpenAdManager waits on both before it loads anything, and is
         // a no-op unless Remote Config's ad_app_open_enabled is true.
-        RemoteConfigManager.initialize()
-        MobileAdsInitializer.initialize(this, applicationScope)
-        AppOpenAdManager.initialize(this)
+        StartupTimer.section("RemoteConfigManager.initialize") { RemoteConfigManager.initialize() }
+        StartupTimer.section("MobileAdsInitializer.initialize") { MobileAdsInitializer.initialize(this, applicationScope) }
+        StartupTimer.section("AppOpenAdManager.initialize") { AppOpenAdManager.initialize(this) }
+        StartupTimer.mark("Application.onCreate end")
     }
 
     // Unlike the OnboardingRepository prewarm above (deliberately fire-and-forget — a few ms of
     // slack before Splash resolves its start destination is invisible), this one is a genuine
     // blocking read: AppCompatDelegate must already reflect the persisted language *before*
     // MainActivity's Configuration/resources are resolved, or the very first launch after
-    // picking a non-default language would briefly apply the wrong locale. The DataStore file
-    // holds a single string key, so this costs a negligible amount of process-startup time.
+    // picking a non-default language would briefly apply the wrong locale. It reads a
+    // SharedPreferences mirror rather than DataStore — see persistedTagForStartup.
     private fun applyPersistedLanguage() {
-        val languageTag = runBlocking {
-            LanguagePreferencesRepository().selectedLanguageTag(this@CalloraApplication).first()
-        }
-        LanguagePreferencesRepository.applyLocale(languageTag)
+        LanguagePreferencesRepository.applyLocale(LanguagePreferencesRepository.persistedTagForStartup(this))
     }
 
     // The app's other notification channel ("active_call_channel") is created lazily by

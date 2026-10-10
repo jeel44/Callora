@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var isStartDestinationResolved = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        StartupTimer.mark("MainActivity.onCreate start")
         val extrasDump = intent.extras?.keySet()?.joinToString { key -> "$key=${intent.extras?.get(key)}" }
         Log.i(
             DIAG_TAG,
@@ -100,11 +101,20 @@ class MainActivity : AppCompatActivity() {
                         onDeepLinkConsumed = { pendingDeepLinkRoute = null },
                         pendingCallPhoneNumber = pendingCallPhoneNumber,
                         onCallConsumed = { pendingCallPhoneNumber = null },
-                        onStartDestinationResolved = { isStartDestinationResolved = true },
+                        onStartDestinationResolved = {
+                            if (!isStartDestinationResolved) {
+                                StartupTimer.mark("start destination resolved (splash released)")
+                                // Lets `adb logcat -s ActivityTaskManager` report "Fully drawn"
+                                // for the first real screen, not just the splash window.
+                                reportFullyDrawn()
+                            }
+                            isStartDestinationResolved = true
+                        },
                     )
                 }
             }
         }
+        StartupTimer.mark("MainActivity.onCreate end")
     }
 
     // Single-Activity app (singleTask, see AndroidManifest.xml) — MainActivity being resumed is

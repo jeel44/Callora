@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -159,7 +160,7 @@ private fun BlockedNumberRow(entry: BlockedNumberEntry, onDelete: () -> Unit) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = formatPhoneNumberForDisplay(entry.phoneNumber),
+                text = remember(entry.phoneNumber) { formatPhoneNumberForDisplay(entry.phoneNumber) },
                 style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
                 color = MaterialTheme.colorScheme.onSurface,
             )
