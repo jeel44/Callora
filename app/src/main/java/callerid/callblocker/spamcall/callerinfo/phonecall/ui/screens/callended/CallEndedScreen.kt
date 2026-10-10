@@ -2,6 +2,7 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.callended
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.provider.ContactsContract
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,7 +64,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.BlockedNumbersRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallLogRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
@@ -70,6 +74,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMa
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamCategory
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamMark
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.NativeAdSlot
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.formatCallTimer
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraAccent
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraPrimary
@@ -105,6 +110,13 @@ private data class CallEndedRealData(
     val isBlocked: Boolean,
 )
 
+/** Single source of truth for "was this call ever answered" — same check
+ * [callerid.callblocker.spamcall.callerinfo.phonecall.telecom.MissedCallNotifier] uses for its
+ * own missed-call notification. Shared by [HeaderBand]'s status line and the call_ended analytics
+ * event below so neither has to duplicate the raw `durationSeconds <= 0L && isIncoming` check. */
+private fun isCallMissed(isIncoming: Boolean, durationSeconds: Long): Boolean =
+    durationSeconds <= 0L && isIncoming
+
 /**
  * Loads the ended call's real contact/spam/block state and renders [CallEndedCard] as a
  * dimmed-backdrop popup. [onOpenContactDetail] and [onDismiss] are the only two ways this screen
@@ -120,6 +132,7 @@ fun CallEndedRoute(
     onOpenContactDetail: (phoneNumber: String) -> Unit,
     onCall: (phoneNumber: String) -> Unit,
     modifier: Modifier = Modifier,
+    adsViewModel: CallEndedAdsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -128,9 +141,16 @@ fun CallEndedRoute(
     var isBlocked by remember { mutableStateOf(false) }
     var spamReported by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+    // Separate from [visible]: the card now starts hidden while its data loads, so "not visible"
+    // no longer implies "being dismissed" — keying the dismiss effect on visible alone would
+    // close this popup 200ms after launch, before the card ever appeared.
+    var dismissRequested by remember { mutableStateOf(false) }
 
     LaunchedEffect(phoneNumber) {
-        visible = true
+        // The card used to be made visible here, BEFORE the lookup below — so its first frames
+        // rendered with contact == null (raw number in the header, number-only actions) and then
+        // swapped to the contact's name once this landed. Now only the dim scrim paints
+        // immediately; the card animates in once, already showing its final identity.
         val loaded = withContext(Dispatchers.IO) {
             val contactsRepository = ContactsRepository()
             val spamMarkRepository = SpamMarkRepository()
@@ -143,13 +163,30 @@ fun CallEndedRoute(
         }
         data = loaded
         isBlocked = loaded.isBlocked
+        if (!dismissRequested) visible = true
+
+        // Fired once per call-ended screen shown, same as CallEndedActivity's screen_view — but
+        // necessarily here rather than there: is_spam depends on the real spamMark lookup above
+        // (SpamMarkRepository, same IO-dispatched read CallEndedCard's own `isSpam` already
+        // derives from), which CallEndedActivity.onCreate can't have synchronously without
+        // blocking the main thread the way this screen deliberately avoids everywhere else. Keyed
+        // on phoneNumber like the rest of this LaunchedEffect, so this can't double-fire on
+        // recomposition — a given CallEndedActivity instance only ever shows one phoneNumber.
+        AnalyticsHelper.logEvent(
+            "call_ended",
+            Bundle().apply {
+                putString("call_type", if (isCallMissed(isIncoming, durationSeconds)) "missed" else "answered")
+                putBoolean("is_spam", loaded.spamMark != null)
+            },
+        )
     }
 
     fun requestDismiss() {
         visible = false
+        dismissRequested = true
     }
-    LaunchedEffect(visible) {
-        if (!visible) {
+    LaunchedEffect(dismissRequested) {
+        if (dismissRequested) {
             // Matches the AnimatedVisibility exit spec below — gives the fade/scale-out time to
             // actually play before the Activity behind it is torn down.
             delay(200)
@@ -168,70 +205,91 @@ fun CallEndedRoute(
             enter = fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.92f),
             exit = fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.92f),
         ) {
-            CallEndedCard(
-                phoneNumber = phoneNumber,
-                isIncoming = isIncoming,
-                durationSeconds = durationSeconds,
-                endedAtMillis = endedAtMillis,
-                contact = data?.contact,
-                spamMark = data?.spamMark,
-                isBlocked = isBlocked,
-                spamReported = spamReported,
-                onDismiss = ::requestDismiss,
-                onCall = { onCall(phoneNumber) },
-                onMessage = {
-                    context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber")))
-                },
-                onSave = {
-                    context.startActivity(
-                        Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
-                            putExtra(ContactsContract.Intents.Insert.PHONE, phoneNumber)
-                        },
-                    )
-                },
-                onOpenContact = { onOpenContactDetail(phoneNumber) },
-                onToggleBlock = {
-                    coroutineScope.launch {
-                        val blockedNumbersRepository = BlockedNumbersRepository()
-                        val succeeded = withContext(Dispatchers.IO) {
-                            if (isBlocked) {
-                                blockedNumbersRepository.unblockNumber(context, phoneNumber)
+            // Card + native ad, centered together. The ad is drawn inside the card's own
+            // AnimatedVisibility so it appears/leaves with the card — but [visible] and the dismiss
+            // timing above never look at the ad: it preloads in CallEndedAdsViewModel meanwhile and
+            // simply shows up here whenever it's ready.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding(),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                CallEndedCard(
+                    phoneNumber = phoneNumber,
+                    isIncoming = isIncoming,
+                    durationSeconds = durationSeconds,
+                    endedAtMillis = endedAtMillis,
+                    contact = data?.contact,
+                    spamMark = data?.spamMark,
+                    isBlocked = isBlocked,
+                    spamReported = spamReported,
+                    onDismiss = ::requestDismiss,
+                    onCall = { onCall(phoneNumber) },
+                    onMessage = {
+                        context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber")))
+                    },
+                    onSave = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
+                                putExtra(ContactsContract.Intents.Insert.PHONE, phoneNumber)
+                            },
+                        )
+                    },
+                    onOpenContact = { onOpenContactDetail(phoneNumber) },
+                    onToggleBlock = {
+                        coroutineScope.launch {
+                            val blockedNumbersRepository = BlockedNumbersRepository()
+                            val succeeded = withContext(Dispatchers.IO) {
+                                if (isBlocked) {
+                                    blockedNumbersRepository.unblockNumber(context, phoneNumber)
+                                } else {
+                                    blockedNumbersRepository.blockNumber(context, phoneNumber)
+                                }
+                            }
+                            if (succeeded) {
+                                isBlocked = !isBlocked
+                                Toast.makeText(
+                                    context,
+                                    if (isBlocked) {
+                                        context.getString(R.string.call_ended_toast_number_blocked)
+                                    } else {
+                                        context.getString(R.string.call_ended_toast_number_unblocked)
+                                    },
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             } else {
-                                blockedNumbersRepository.blockNumber(context, phoneNumber)
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.call_ended_toast_block_update_failed),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         }
-                        if (succeeded) {
-                            isBlocked = !isBlocked
-                            Toast.makeText(
-                                context,
-                                if (isBlocked) {
-                                    context.getString(R.string.call_ended_toast_number_blocked)
-                                } else {
-                                    context.getString(R.string.call_ended_toast_number_unblocked)
-                                },
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.call_ended_toast_block_update_failed),
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                    },
+                    onReportSpam = {
+                        coroutineScope.launch {
+                            // Same repository every other spam-marking entry point in the app uses;
+                            // no category picker here (unlike the old AfterCallScreen's
+                            // SpamCategoryPickerSheet) — this is a quick one-tap report.
+                            withContext(Dispatchers.IO) {
+                                SpamMarkRepository().markAsSpam(context, phoneNumber, SpamCategory.OTHER)
+                            }
+                            spamReported = true
                         }
-                    }
-                },
-                onReportSpam = {
-                    coroutineScope.launch {
-                        // Same repository every other spam-marking entry point in the app uses;
-                        // no category picker here (unlike the old AfterCallScreen's
-                        // SpamCategoryPickerSheet) — this is a quick one-tap report.
-                        withContext(Dispatchers.IO) {
-                            SpamMarkRepository().markAsSpam(context, phoneNumber, SpamCategory.OTHER)
-                        }
-                        spamReported = true
-                    }
-                },
-            )
+                    },
+                )
+                // Below the card, never inside it: the card is measured first at its full natural
+                // height, and the ad only gets what's left (weight without fill). Its media shrinks to
+                // fit, and if even AdMob's minimum doesn't fit (e.g. View profile expanded on a short
+                // screen) NativeAdSlot renders nothing — it can't push the actions or header off-screen.
+                NativeAdSlot(
+                    controller = adsViewModel.nativeAdController,
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .padding(bottom = 24.dp),
+                )
+            }
         }
     }
 }
@@ -454,7 +512,7 @@ private fun HeaderBand(
         Brush.linearGradient(listOf(NormalGradientStart, NormalGradientEnd))
     }
 
-    val missed = durationSeconds <= 0L && isIncoming
+    val missed = isCallMissed(isIncoming, durationSeconds)
     val statusWord = if (missed) stringResource(R.string.call_status_missed) else stringResource(R.string.call_status_ended)
     val statusLine = stringResource(R.string.call_ended_status_line, statusWord, formatRelativeShort(endedAtMillis))
     val titleLine = when {

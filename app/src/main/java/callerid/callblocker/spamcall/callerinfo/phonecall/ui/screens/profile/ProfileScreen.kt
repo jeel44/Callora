@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -53,83 +56,90 @@ fun ProfileScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { ProfileTopBar(onBack = onBack) },
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { innerPadding ->
-        if (!uiState.isLoaded) return@Scaffold
+        Column(modifier = Modifier.fillMaxSize()) {
+            ProfileTopBar(onBack = onBack)
+            Box(modifier = Modifier.weight(1f)) {
+                if (!uiState.isLoaded) return@Scaffold
 
-        val hasProfile = uiState.displayName != null || uiState.phoneNumber != null
+                val hasProfile = uiState.displayName != null || uiState.phoneNumber != null
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(modifier = Modifier.height(48.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(modifier = Modifier.height(48.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(88.dp)
-                    .clip(CircleShape)
-                    .background(
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (hasProfile) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         if (hasProfile) {
-                            MaterialTheme.colorScheme.primary
+                            Text(
+                                text = (uiState.displayName?.firstOrNull { it.isLetter() }?.uppercaseChar() ?: '?').toString(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
                         } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (hasProfile) {
-                    Text(
-                        text = (uiState.displayName?.firstOrNull { it.isLetter() }?.uppercaseChar() ?: '?').toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.extendedColors.onSurfaceFaint,
-                        modifier = Modifier.size(40.dp),
-                    )
-                }
-            }
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.extendedColors.onSurfaceFaint,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        }
+                    }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-            if (hasProfile) {
-                Text(
-                    text = uiState.displayName ?: stringResource(R.string.profile_unnamed),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-                val phoneNumber = uiState.phoneNumber
-                if (phoneNumber != null) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = formatPhoneNumberForDisplay(phoneNumber),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                        color = MaterialTheme.extendedColors.onSurfaceSoft,
-                        textAlign = TextAlign.Center,
-                    )
+                    if (hasProfile) {
+                        Text(
+                            text = uiState.displayName ?: stringResource(R.string.profile_unnamed),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                        )
+                        val phoneNumber = uiState.phoneNumber
+                        if (phoneNumber != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = formatPhoneNumberForDisplay(phoneNumber),
+                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                                color = MaterialTheme.extendedColors.onSurfaceSoft,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.profile_empty_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_empty_subtitle),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+                            color = MaterialTheme.extendedColors.onSurfaceFaint,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
-            } else {
-                Text(
-                    text = stringResource(R.string.profile_empty_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.profile_empty_subtitle),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
-                    color = MaterialTheme.extendedColors.onSurfaceFaint,
-                    textAlign = TextAlign.Center,
-                )
             }
         }
     }

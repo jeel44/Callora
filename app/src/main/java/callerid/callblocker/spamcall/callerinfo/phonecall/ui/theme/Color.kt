@@ -30,6 +30,18 @@ val DarkOnSurfaceSoft = Color(0xFF9AABC4)
 val DarkOnSurfaceFaint = Color(0xFF5C6C86)
 val DarkOutline = Color(0xFF2A374A)
 
+// Flat call-log list (Home, Spam Center): direction arrows, row dividers, muted secondary ink.
+val LightCallOutgoing = Color(0xFF4CAF50)
+val LightCallIncoming = Color(0xFF6B7280)
+val LightCallMissed = Color(0xFFEF5350)
+val LightListDivider = Color(0xFFF0F1F3)
+val LightMutedText = Color(0xFF8A919B)
+val DarkCallOutgoing = Color(0xFF66BB6A)
+val DarkCallIncoming = Color(0xFF9AA3AD)
+val DarkCallMissed = Color(0xFFFF6B65)
+val DarkListDivider = Color(0xFF22262B)
+val DarkMutedText = Color(0xFF9AA3AD)
+
 // "Set as default" screen — dark hero call-preview tokens. Values specific to this screen's
 // mock UI (not reused elsewhere), so they live here rather than overloading the semantic tokens
 // above.

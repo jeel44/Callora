@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -18,6 +19,23 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
 private const val MATCH_DEBOUNCE_MILLIS = 150L
+
+private const val INDIA_COUNTRY_PREFIX = "+91"
+
+/**
+ * Digits to substring-match contacts against for what's on the dialpad. A number that resolves
+ * to +91 (typed bare, as "091...", or already as "+91...") matches on its national part only, so
+ * a contact saved as "+91 98765 43210", "098765 43210" or "9876543210" is found either way.
+ * Everything else ("+1...", "00...", partial input) matches on exactly the digits typed.
+ */
+internal fun contactMatchDigits(typed: String): String {
+    val dialed = normalizeDialedNumber(typed).filter { it.isDigit() || it == '+' }
+    return if (dialed.startsWith(INDIA_COUNTRY_PREFIX)) {
+        dialed.removePrefix(INDIA_COUNTRY_PREFIX)
+    } else {
+        typed.filter { it.isDigit() }
+    }
+}
 
 /**
  * Drives the Dialpad's live T9-style match list. Typed digits are debounced before hitting
@@ -34,7 +52,8 @@ class DialpadViewModel(application: Application) : AndroidViewModel(application)
     val matchingContacts: StateFlow<List<Contact>> = _typedDigits
         .debounce(MATCH_DEBOUNCE_MILLIS)
         .distinctUntilChanged()
-        .mapLatest { digits ->
+        .mapLatest { typed ->
+            val digits = contactMatchDigits(typed)
             if (digits.isBlank()) {
                 emptyList()
             } else {

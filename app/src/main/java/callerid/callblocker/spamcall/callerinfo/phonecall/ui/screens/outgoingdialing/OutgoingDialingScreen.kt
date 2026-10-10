@@ -11,42 +11,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallerIdentityCache
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallActionButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallAppLabelRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallScreenBackground
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerAvatar
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallSquircleButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerIdentityHeader
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.ContextTag
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.PulsingDotsRow
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.StatusPill
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.UtilityIconButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.EndCallButton
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraTheme
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 
 /**
  * Real outgoing-dialing screen — places the call via [OutgoingDialingViewModel]
@@ -96,14 +90,19 @@ fun OutgoingDialingScreen(
         CallUiState.RINGING -> stringResource(R.string.outgoing_status_ringing)
         else -> stringResource(R.string.outgoing_status_calling)
     }
-    val displayedNumber = callInfo.phoneNumber ?: phoneNumber
-    val displayName = callInfo.displayName
-    // True only for the brief window between a new number showing up and CallRepository's
-    // ContactsRepository lookup settling — see ActiveCallInfo.isResolvingContactName's own doc.
-    // Gates both the avatar initials and the name/number text below so this screen never renders
-    // the raw number only to immediately replace it with the resolved contact name a moment
-    // later (a visible flash) — it shows a neutral placeholder for that one short window instead.
-    val isResolvingContactName = callInfo.isResolvingContactName
+    // Whether callInfo already describes THIS call. It doesn't on the first frame(s): this
+    // composable renders before its own LaunchedEffect runs placeCall() (which seeds
+    // CallRepository via prepareOutgoingCall), so callInfo is still the empty state — or a
+    // previous call's leftover DISCONNECTED state, name and all. The old code fell back to the
+    // raw nav-arg number there with isResolvingContactName=false, which is exactly the
+    // number -> name flash this screen still had despite the flag. Until callInfo catches up,
+    // identity comes from the warm cache (synchronous) or stays a placeholder.
+    val isThisCall = CallerIdentityCache.isSameNumber(callInfo.phoneNumber, phoneNumber)
+    val cachedIdentity = remember(phoneNumber) { CallerIdentityCache.peek(phoneNumber) }
+    val displayedNumber = if (isThisCall) callInfo.phoneNumber ?: phoneNumber else phoneNumber
+    val displayName = if (isThisCall) callInfo.displayName else cachedIdentity?.contact?.name
+    val photoUri = if (isThisCall) callInfo.photoUri else cachedIdentity?.contact?.photoUri
+    val isResolvingContactName = if (isThisCall) callInfo.isResolvingContactName else cachedIdentity == null
 
     CallScreenBackground(isSpam = false, modifier = modifier) {
         Column(
@@ -114,72 +113,31 @@ fun OutgoingDialingScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
+            CallAppLabelRow {
                 IconButton(onClick = onMinimize) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = stringResource(R.string.call_minimize_content_description),
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            StatusPill(text = stringResource(R.string.outgoing_call_label), isSpam = false)
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            CallerAvatar(
-                photoUri = callInfo.photoUri,
-                initialsSource = if (isResolvingContactName) null else (displayName ?: displayedNumber),
-                isSpam = false,
-            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            when {
-                isResolvingContactName -> {
-                    // Neutral placeholder — same style/height as the number-only branch below so
-                    // nothing visibly reflows once resolution completes without a saved contact.
-                    Text(
-                        text = "",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                displayName != null -> {
-                    Text(
-                        text = displayName,
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = formatPhoneNumberForDisplay(displayedNumber),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.5.sp),
-                        color = Color.White.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                else -> {
-                    Text(
-                        text = formatPhoneNumberForDisplay(displayedNumber),
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
+            CallerIdentityHeader(
+                isResolving = isResolvingContactName,
+                displayName = displayName,
+                phoneNumber = displayedNumber,
+                photoUri = photoUri,
+                isSpam = false,
+                unknownLabel = stringResource(R.string.active_call_unknown_caller),
+                statusText = statusLabel,
+            )
 
             val tagText = when {
                 isSpamMarked -> stringResource(R.string.call_tag_marked_spam)
-                displayName != null -> stringResource(R.string.call_tag_saved_contact)
+                !isResolvingContactName && displayName != null -> stringResource(R.string.call_tag_saved_contact)
                 else -> null
             }
             if (tagText != null) {
@@ -187,42 +145,41 @@ fun OutgoingDialingScreen(
                 ContextTag(text = tagText, isSpam = isSpamMarked)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = statusLabel,
-                    style = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                    color = Color.White.copy(alpha = 0.7f),
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                // Keypad/More are inert until the call connects (as in Google Phone): DTMF and
+                // the More sheet's add-call/hold only make sense on an answered call, and both
+                // live on Active Call, which this screen hands off to the moment it does.
+                CallSquircleButton(
+                    icon = Icons.Filled.Dialpad,
+                    label = stringResource(R.string.active_call_keypad_label),
+                    onClick = {},
+                    enabled = false,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                PulsingDotsRow(color = Color.White.copy(alpha = 0.7f))
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                UtilityIconButton(
+                CallSquircleButton(
                     icon = Icons.Filled.MicOff,
                     label = stringResource(R.string.call_mute_label),
                     isActive = audioState.isMuted,
                     onClick = { viewModel.setMuted(!audioState.isMuted) },
                 )
-                UtilityIconButton(
+                CallSquircleButton(
                     icon = Icons.AutoMirrored.Filled.VolumeUp,
                     label = stringResource(R.string.call_speaker_label),
                     isActive = audioState.isSpeakerOn,
                     onClick = { viewModel.setSpeakerEnabled(!audioState.isSpeakerOn) },
                 )
+                CallSquircleButton(
+                    icon = Icons.Filled.MoreVert,
+                    label = stringResource(R.string.active_call_more_label),
+                    onClick = {},
+                    enabled = false,
+                )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            CallActionButton(
-                icon = Icons.Filled.CallEnd,
-                label = stringResource(R.string.outgoing_cancel_label),
-                containerColor = MaterialTheme.extendedColors.spam,
-                contentColor = Color.White,
+            EndCallButton(
                 onClick = {
                     // Best-effort real disconnect, but never leaves the user stuck here waiting
                     // on a state callback that may never arrive (e.g. this app isn't currently
@@ -230,8 +187,7 @@ fun OutgoingDialingScreen(
                     viewModel.cancelCall()
                     onCancel()
                 },
-                size = 64.dp,
-                modifier = Modifier.padding(bottom = 46.dp),
+                modifier = Modifier.padding(bottom = 32.dp),
             )
         }
     }

@@ -21,6 +21,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Callora">
+
+        <!-- TODO(before release): Google's official TEST AdMob App ID. MUST be swapped for
+             Callora's real AdMob App ID before any release build — shipping with this ID means no
+             real ad revenue. Pairs with the test ad unit ID default in RemoteConfigManager. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

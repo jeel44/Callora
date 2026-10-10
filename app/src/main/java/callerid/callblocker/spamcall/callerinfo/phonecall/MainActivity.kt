@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.navigation.CalloraNavHost
@@ -56,16 +57,17 @@ class MainActivity : AppCompatActivity() {
         // Settings' dark-mode toggle if that's ever wired to recreate() too. Only matters for a
         // genuinely fresh/recreated window: an incoming call arriving via onNewIntent (Activity
         // already running, no window rebuild) never hits this path at all.
-        if (intent.getBooleanExtra(EXTRA_INCOMING_CALL, false)) {
-            Log.i(DIAG_TAG, "onCreate: EXTRA_INCOMING_CALL true, calling setTheme(Theme_Callora_IncomingCall) BEFORE super.onCreate()")
-            setTheme(R.style.Theme_Callora_IncomingCall)
-        } else if (ThemeState.isDarkMode) {
+        // Incoming-call cold starts no longer get their own dark window (Theme_Callora_IncomingCall):
+        // the call screens now paint the theme's own canvas, so the regular light/dark window
+        // background is already the matching one and avoids a dark flash in light mode.
+        if (ThemeState.isDarkMode) {
             Log.i(DIAG_TAG, "onCreate: ThemeState.isDarkMode true, calling setTheme(Theme_Callora_Dark) BEFORE super.onCreate()")
             setTheme(R.style.Theme_Callora_Dark)
         } else {
-            Log.i(DIAG_TAG, "onCreate: EXTRA_INCOMING_CALL false/absent and light mode, keeping default Theme.Callora")
+            Log.i(DIAG_TAG, "onCreate: light mode, keeping default Theme.Callora")
         }
         super.onCreate(savedInstanceState)
+        suppressAppOpenAdForCallIntent(intent)
         enableEdgeToEdge()
         applyIncomingCallWindowFlags(intent)
         observeCallStateForWindowFlagCleanup()
@@ -120,10 +122,24 @@ class MainActivity : AppCompatActivity() {
                 "EXTRA_OPEN_ACTIVE_CALL=${intent.getBooleanExtra(EXTRA_OPEN_ACTIVE_CALL, false)}",
         )
         setIntent(intent)
+        suppressAppOpenAdForCallIntent(intent)
         applyIncomingCallWindowFlags(intent)
         pendingDeepLinkRoute = routeForIntent(intent)
         pendingCallPhoneNumber = intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)
         Log.i(DIAG_TAG, "onNewIntent: pendingDeepLinkRoute=$pendingDeepLinkRoute")
+    }
+
+    /** Any intent that opens a call or post-call flow — incoming call, the ongoing-call
+     * notification, placing/dialing a call, or CallEndedActivity's Contact action — must never
+     * have an App Open ad appear over what it opens (see AppOpenAdManager). Only a plain launch
+     * (launcher icon / recents) is eligible. */
+    private fun suppressAppOpenAdForCallIntent(intent: Intent) {
+        val isCallRelated = intent.action == Intent.ACTION_DIAL ||
+            intent.getBooleanExtra(EXTRA_INCOMING_CALL, false) ||
+            intent.getBooleanExtra(EXTRA_OPEN_ACTIVE_CALL, false) ||
+            intent.hasExtra(EXTRA_PLACE_CALL_PHONE_NUMBER) ||
+            intent.hasExtra(EXTRA_OPEN_CONTACT_DETAIL)
+        if (isCallRelated) AppOpenAdManager.suppressCurrentForeground()
     }
 
     /**

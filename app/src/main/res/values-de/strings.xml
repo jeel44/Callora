@@ -27,6 +27,7 @@
     <string name="home_dialpad_content_description">Wähltastatur</string>
     <string name="home_notifications_content_description">Benachrichtigungen</string>
     <string name="home_recent_section_title">LETZTE</string>
+    <string name="home_title">Telefon</string>
     <string name="home_call_log_permission_message">Gewähre Zugriff auf Kontakte und Anrufliste, um deine letzten Anrufe zu sehen.</string>
     <string name="home_no_recent_calls">Noch keine letzten Anrufe.</string>
     <string name="home_call_log_permission_heading">Behalte jeden Anruf im Blick</string>
@@ -35,8 +36,6 @@
     <string name="home_greeting_default">Willkommen zurück</string>
     <string name="home_protection_active">Schutz aktiv</string>
     <string name="home_search_hint">Nach Nummer oder Namen suchen</string>
-    <string name="home_spam_protection_label">Spamschutz</string>
-    <string name="home_coming_soon">Demnächst verfügbar</string>
     <string name="home_call_content_description">%1$s anrufen</string>
     <string name="home_spam_badge">Spam</string>
 
@@ -204,6 +203,8 @@
     <string name="spam_center_title">Spam-Center</string>
     <string name="spam_center_close_content_description">Schließen</string>
     <string name="spam_center_blocking_rules_title">Blockierregeln</string>
+    <string name="spam_center_spam_calls_title">Spam-Anrufe</string>
+    <string name="spam_center_no_spam_calls">Keine Spam-Anrufe in deinem letzten Anrufverlauf.</string>
     <string name="spam_center_stat_blocked_week">Diese Woche blockiert</string>
     <string name="spam_center_stat_blocked_alltime">Insgesamt blockiert</string>
     <string name="spam_center_rule_auto_block_title">Top-Spammer automatisch blockieren</string>
@@ -264,6 +265,9 @@
     <string name="language_select_subtitle">Du kannst dies später in den Einstellungen ändern.</string>
     <string name="language_select_continue">Weiter</string>
     <string name="language_select_selected_content_description">Ausgewählt</string>
+    <!-- Required "this is an ad" badge on the Language Select native ad (AdMob policy). -->
+    <string name="native_ad_attribution">Anzeige</string>
+    <string name="onboarding_fullscreen_ad_close">Anzeige schließen</string>
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">So werden deine Anrufe aussehen</string>
@@ -316,4 +320,11 @@
     <string name="contact_detail_clip_label_name">Kontaktname</string>
     <string name="contact_detail_clip_label_number">Telefonnummer</string>
     <string name="contact_detail_clip_label_contact">Kontakt</string>
+    <string name="call_app_label">Telefon</string>
+    <string name="incoming_urgent_label">Dringend?</string>
+    <string name="active_call_video_call_label">Videoanruf</string>
+    <string name="active_call_hold_label">Halten</string>
+    <string name="call_more_sheet_title">Mehr</string>
+    <string name="call_more_sheet_close_content_description">Schließen</string>
+    <string name="call_feature_unsupported_toast">%1$s wird noch nicht unterstützt</string>
 </resources>

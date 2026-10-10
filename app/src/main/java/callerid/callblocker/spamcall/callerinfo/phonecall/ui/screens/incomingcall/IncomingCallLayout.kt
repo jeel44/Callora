@@ -1,5 +1,6 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,34 +13,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallActionButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallAppLabelRow
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallOvalActionButton
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallScreenBackground
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerAvatar
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallSecondaryPillButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerIdentityHeader
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.ContextTag
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.SimAccountLabel
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.StatusPill
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 
 /** Shared layout for [IncomingKnownScreen]/[IncomingSpamScreen] — both are real, always-live
- * driven by [CallRepository.callState]; only the accent color, tag, and middle action button
- * differ between the two, per the approved redesign. */
+ * driven by [CallRepository.callState]; only the backdrop tint, tag, and second pill button
+ * (Message vs Block) differ between the two. [isResolvingIdentity] holds the caller identity
+ * (avatar glyph, name/number, tag) on a same-height placeholder until both the contact lookup and
+ * the spam-mark read have settled, so ringing never paints number -> name. Tap-only Decline/Answer
+ * (no swipe), matching the stable Google Phone app. */
 @Composable
 internal fun IncomingCallLayout(
+    isResolvingIdentity: Boolean,
     displayName: String?,
     phoneNumber: String?,
     photoUri: String?,
@@ -53,6 +54,10 @@ internal fun IncomingCallLayout(
     onAnswer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val urgentLabel = stringResource(R.string.incoming_urgent_label)
+    val urgentUnsupportedText = stringResource(R.string.call_feature_unsupported_toast, urgentLabel)
+
     CallScreenBackground(isSpam = isSpam, modifier = modifier) {
         Column(
             modifier = Modifier
@@ -62,95 +67,70 @@ internal fun IncomingCallLayout(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(modifier = Modifier.height(56.dp))
-
-            StatusPill(text = stringResource(R.string.incoming_call_label), isSpam = isSpam)
+            CallAppLabelRow()
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            CallerAvatar(
+            CallerIdentityHeader(
+                isResolving = isResolvingIdentity,
+                displayName = displayName,
+                phoneNumber = phoneNumber,
                 photoUri = photoUri,
-                initialsSource = displayName ?: phoneNumber,
                 isSpam = isSpam,
+                unknownLabel = stringResource(R.string.incoming_unknown_number),
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (displayName != null) {
-                Text(
-                    text = displayName,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-                phoneNumber?.let {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = formatPhoneNumberForDisplay(it),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.5.sp),
-                        color = Color.White.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            } else {
-                Text(
-                    text = phoneNumber?.let { formatPhoneNumberForDisplay(it) } ?: stringResource(R.string.incoming_unknown_number),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
             if (simAccountLabel != null) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SimAccountLabel(label = simAccountLabel)
             }
 
-            if (tagText != null) {
-                Spacer(modifier = Modifier.height(14.dp))
+            if (tagText != null && !isResolvingIdentity) {
+                Spacer(modifier = Modifier.height(12.dp))
                 ContextTag(text = tagText, isSpam = isSpam)
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Text(
-                text = stringResource(R.string.incoming_slide_hint),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.5f),
-                textAlign = TextAlign.Center,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CallSecondaryPillButton(
+                    icon = Icons.Filled.SwapVert,
+                    label = urgentLabel,
+                    // No "urgent call" action exists anywhere in the call stack yet — honest
+                    // toast rather than a silent no-op, like Active Call's merge toast.
+                    onClick = { Toast.makeText(context, urgentUnsupportedText, Toast.LENGTH_SHORT).show() },
+                )
+                CallSecondaryPillButton(
+                    icon = middleButtonIcon,
+                    label = middleButtonLabel,
+                    onClick = onMiddleButtonClick,
+                )
+            }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 40.dp)
-                    .padding(bottom = 46.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                    .padding(bottom = 32.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                CallActionButton(
-                    icon = Icons.Filled.CallEnd,
+                CallOvalActionButton(
+                    icon = Icons.Filled.Call,
+                    iconRotation = 135f,
                     label = stringResource(R.string.incoming_decline_label),
-                    containerColor = MaterialTheme.extendedColors.spam,
-                    contentColor = Color.White,
+                    contentDescription = stringResource(R.string.incoming_decline_label),
+                    containerColor = MaterialTheme.extendedColors.callMissed,
                     onClick = onDecline,
+                    modifier = Modifier.weight(1f),
                 )
-                CallActionButton(
-                    icon = middleButtonIcon,
-                    label = middleButtonLabel,
-                    containerColor = Color.White.copy(alpha = 0.15f),
-                    contentColor = Color.White,
-                    onClick = onMiddleButtonClick,
-                )
-                CallActionButton(
+                CallOvalActionButton(
                     icon = Icons.Filled.Call,
                     label = stringResource(R.string.incoming_answer_label),
-                    containerColor = MaterialTheme.extendedColors.success,
-                    contentColor = Color.White,
+                    contentDescription = stringResource(R.string.incoming_answer_label),
+                    containerColor = MaterialTheme.extendedColors.callOutgoing,
                     onClick = onAnswer,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

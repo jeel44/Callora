@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import android.os.Bundle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +20,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -39,6 +42,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.OnboardingRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptKind
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptRepository
@@ -68,13 +73,13 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.onboarding1
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.onboarding2.Onboarding2Screen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.onboarding3.Onboarding3Screen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.outgoingdialing.OutgoingDialingScreen
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.profile.ProfileScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.search.SearchScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.SetDefaultScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.isDialerRoleHeld
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.settings.SettingsScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.spamcenter.SpamCenterScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.splash.SplashScreen
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 
 private const val DIAG_TAG = "DIAG_CalloraNavHost"
@@ -126,6 +131,43 @@ fun CalloraNavHost(
     onCallConsumed: () -> Unit = {},
 ) {
     val context = LocalContext.current
+
+    // Central screen_view wiring — the single place this fires for the entire Compose nav graph
+    // below (every composable(Routes.X) destination in CalloraNavHostContent), so no individual
+    // screen needs its own logEvent call. Registered here (on the outer navController, not inside
+    // CalloraNavHostContent) so it's attached even while resolveStartDestination is still
+    // resolving; OnDestinationChangedListener only invokes once NavHost has actually set its graph
+    // and current destination, so the real start destination still gets exactly one event — never
+    // zero, never two. Keyed on navController so this add/remove pair runs exactly once per
+    // NavController instance regardless of how many times this composable recomposes — that's what
+    // rules out the listener double-firing per navigation. A config change (or process recreation)
+    // does produce one fresh screen_view for whatever destination is current at that point, same as
+    // Firebase's own default Activity-based screen tracking would report — expected, not inflation
+    // of the same navigation event. Unlike CalloraApplication's one-off verification event, this is
+    // real tracking and is intentionally NOT gated behind BuildConfig.DEBUG — it must fire in both
+    // debug and release.
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            // Route is null only for the implicit root NavGraph node itself (never one of this
+            // graph's composable(Routes.X) leaves, since none are nested inside a child
+            // navigation() graph here) — skip rather than log a blank screen_name for it.
+            val route = destination.route ?: return@OnDestinationChangedListener
+            // Lets the App Open ad gate refuse call and first-run screens (see AppOpenAdManager).
+            AppOpenAdManager.onRouteChanged(route)
+            AnalyticsHelper.logEvent(
+                FirebaseAnalytics.Event.SCREEN_VIEW,
+                Bundle().apply {
+                    putString(FirebaseAnalytics.Param.SCREEN_NAME, route)
+                    // No distinct class name to report per Composable destination — reusing the
+                    // route string for both params, as the route is already the identifier this
+                    // whole nav graph is keyed on.
+                    putString(FirebaseAnalytics.Param.SCREEN_CLASS, route)
+                },
+            )
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
 
     // null while the async DataStore read (onboarding-complete flag) + sync system checks
     // (dialer role, permissions) are still resolving. Rendered as a blank, theme-background
@@ -406,13 +448,16 @@ private fun CalloraNavHostContent(
         }
         composable(Routes.ONBOARDING_3) {
             Onboarding3Screen(
-                onGetStarted = {
-                    // Persisted here — the moment the education carousel itself finishes — not
-                    // after Set Default/Permissions resolve, so an app kill partway through
-                    // those two never replays Splash/Language/Onboarding on the next launch; the
-                    // resolveStartDestination re-check above already sends a relaunch straight
-                    // back to whichever of Set Default/Permissions is still outstanding.
+                // Persisted the moment Get Started is tapped — before the onboarding interstitial
+                // (if any) is shown, and not after Set Default/Permissions resolve — so an app kill
+                // mid-ad or partway through those two never replays Splash/Language/Onboarding on
+                // the next launch; the resolveStartDestination re-check above already sends a
+                // relaunch straight to whichever of Set Default/Permissions is still outstanding.
+                onOnboardingFinished = {
                     coroutineScope.launch { OnboardingRepository().markOnboardingComplete(context) }
+                },
+                // Runs after the interstitial is dismissed (or immediately when there isn't one).
+                onGetStarted = {
                     // Popping ONBOARDING_3 (rather than SPLASH) since Splash already popped
                     // itself off the back stack in its own onTimeout transition above — by this
                     // point Splash is long gone, so popUpTo(SPLASH) here would never find it and
@@ -516,6 +561,9 @@ private fun CalloraNavHostContent(
                     }
                 },
                 onOpenBlockedList = { navController.navigate(Routes.BLOCKED_LIST) },
+                onOpenContactDetail = { phoneNumber ->
+                    navController.navigate(Routes.contactDetailRoute(phoneNumber))
+                },
             )
         }
         composable(Routes.BLOCKED_LIST) {
@@ -539,11 +587,7 @@ private fun CalloraNavHostContent(
                 },
                 onOpenAllContacts = { navController.navigate(Routes.ALL_CONTACTS) },
                 onOpenSpamCenter = { navController.navigate(Routes.SPAM_CENTER) },
-                onOpenProfile = { navController.navigate(Routes.PROFILE) },
             )
-        }
-        composable(Routes.PROFILE) {
-            ProfileScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.NOTIFICATION_SETTINGS) {
             NotificationSettingsScreen(onBack = { navController.popBackStack() })
@@ -592,8 +636,12 @@ private fun CalloraNavHostContent(
             // not merely "not a saved contact", so a genuinely unknown-but-never-marked number
             // still gets the neutral Known-screen treatment (no tag), and only numbers the user
             // has actually marked as spam before get the red variant + Block action.
-            if (isSpamMarked) {
+            // Identity (name/number/avatar/tag) stays on a placeholder until BOTH the shared
+            // contact lookup and this screen's spam-mark read have settled — then one swap.
+            val isResolvingIdentity = callInfo.isResolvingContactName || isSpamMarked == null
+            if (isSpamMarked == true) {
                 IncomingSpamScreen(
+                    isResolvingIdentity = isResolvingIdentity,
                     displayName = callInfo.displayName,
                     phoneNumber = callInfo.phoneNumber,
                     photoUri = callInfo.photoUri,
@@ -604,6 +652,7 @@ private fun CalloraNavHostContent(
                 )
             } else {
                 IncomingKnownScreen(
+                    isResolvingIdentity = isResolvingIdentity,
                     displayName = callInfo.displayName,
                     phoneNumber = callInfo.phoneNumber,
                     photoUri = callInfo.photoUri,

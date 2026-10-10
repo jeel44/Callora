@@ -95,6 +95,9 @@ class OutgoingDialingViewModel(application: Application) : AndroidViewModel(appl
 
         val telecomManager = context.getSystemService(TelecomManager::class.java) ?: return false
         CallRepository.reset()
+        // Seeds callState with this number + its contact identity (or a pending lookup, started
+        // now rather than after the system's onCallAdded round-trip) — see prepareOutgoingCall.
+        CallRepository.prepareOutgoingCall(context, phoneNumber)
         val uri = Uri.fromParts("tel", phoneNumber, null)
         val extras = phoneAccountHandle?.let { bundleOf(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE to it) }
         Log.i("DIAG_PlaceCall", "placeCall: about to invoke TelecomManager.placeCall, uri=$uri, accountHandle=$phoneAccountHandle")

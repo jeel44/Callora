@@ -81,7 +81,14 @@ class InCallServiceImpl : InCallService() {
         createNotificationChannel()
         serviceScope.launch {
             CallRepository.activeCallUiState.collect { state ->
-                if (state != null) showOngoingCallNotification(state) else cancelOngoingCallNotification()
+                // Holds the first post until the contact lookup settles (CallRepository always
+                // re-emits once it does) — posting with the raw number and then re-notifying with
+                // the name is the same number -> name flash, just in the notification shade.
+                when {
+                    state == null -> cancelOngoingCallNotification()
+                    state.isResolvingContactName -> Unit
+                    else -> showOngoingCallNotification(state)
+                }
             }
         }
     }

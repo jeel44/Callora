@@ -6,11 +6,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -90,38 +94,45 @@ fun NotificationSettingsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { NotificationSettingsTopBar(onBack = onBack) },
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item {
-                ToggleRow(
-                    icon = Icons.Filled.Call,
-                    title = stringResource(R.string.notification_settings_missed_calls),
-                    checked = uiState.missedCallsEnabled,
-                    onCheckedChange = viewModel::setMissedCallsEnabled,
-                )
-            }
-            item {
-                ToggleRow(
-                    icon = Icons.Filled.Report,
-                    title = stringResource(R.string.notification_settings_spam_alerts),
-                    checked = uiState.spamAlertsEnabled,
-                    onCheckedChange = viewModel::setSpamAlertsEnabled,
-                )
-            }
-            item {
-                ToggleRow(
-                    icon = Icons.Filled.Update,
-                    title = stringResource(R.string.notification_settings_app_updates),
-                    checked = uiState.appUpdatesEnabled,
-                    onCheckedChange = viewModel::setAppUpdatesEnabled,
-                )
+        Column(modifier = Modifier.fillMaxSize()) {
+            NotificationSettingsTopBar(onBack = onBack)
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    item {
+                        ToggleRow(
+                            icon = Icons.Filled.Call,
+                            title = stringResource(R.string.notification_settings_missed_calls),
+                            checked = uiState.missedCallsEnabled,
+                            onCheckedChange = viewModel::setMissedCallsEnabled,
+                        )
+                    }
+                    item {
+                        ToggleRow(
+                            icon = Icons.Filled.Report,
+                            title = stringResource(R.string.notification_settings_spam_alerts),
+                            checked = uiState.spamAlertsEnabled,
+                            onCheckedChange = viewModel::setSpamAlertsEnabled,
+                        )
+                    }
+                    item {
+                        ToggleRow(
+                            icon = Icons.Filled.Update,
+                            title = stringResource(R.string.notification_settings_app_updates),
+                            checked = uiState.appUpdatesEnabled,
+                            onCheckedChange = viewModel::setAppUpdatesEnabled,
+                        )
+                    }
+                }
             }
         }
     }

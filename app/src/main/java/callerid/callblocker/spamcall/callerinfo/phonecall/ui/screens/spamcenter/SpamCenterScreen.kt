@@ -3,12 +3,15 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.spamcenter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -48,9 +52,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDayHeader
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDivider
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CardShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * spam_center screen — stats card and the 3 blocking-rule toggles are still local UI-only
@@ -61,10 +72,12 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColor
 fun SpamCenterScreen(
     onClose: () -> Unit,
     onOpenBlockedList: () -> Unit,
+    onOpenContactDetail: (phoneNumber: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SpamCenterViewModel = viewModel(),
 ) {
     val blockedCount by viewModel.blockedCount.collectAsState()
+    val spamCalls by viewModel.spamCalls.collectAsState()
 
     // The blocked count can change on the blocked_list screen (unblocking) or block_confirm
     // (blocking) — both reached from here — so re-check whenever this screen resumes.
@@ -80,58 +93,78 @@ fun SpamCenterScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { SpamCenterTopBar(onClose = onClose) },
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item { StatsCard() }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            item {
-                Text(
-                    text = stringResource(R.string.spam_center_blocking_rules_title),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.extendedColors.onSurfaceFaint,
-                )
+        Column(modifier = Modifier.fillMaxSize()) {
+            SpamCenterTopBar(onClose = onClose)
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    item { StatsCard() }
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                    item {
+                        Text(
+                            text = stringResource(R.string.spam_center_blocking_rules_title),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.extendedColors.onSurfaceFaint,
+                        )
+                    }
+                    item {
+                        var checked by remember { mutableStateOf(true) }
+                        RuleRow(
+                            icon = Icons.Filled.Shield,
+                            title = stringResource(R.string.spam_center_rule_auto_block_title),
+                            subtitle = stringResource(R.string.spam_center_rule_auto_block_subtitle),
+                            checked = checked,
+                            onCheckedChange = { checked = it },
+                        )
+                    }
+                    item {
+                        var checked by remember { mutableStateOf(true) }
+                        RuleRow(
+                            icon = Icons.Filled.Storefront,
+                            title = stringResource(R.string.spam_center_rule_telemarketers_title),
+                            subtitle = stringResource(R.string.spam_center_rule_telemarketers_subtitle),
+                            checked = checked,
+                            onCheckedChange = { checked = it },
+                        )
+                    }
+                    item {
+                        var checked by remember { mutableStateOf(false) }
+                        RuleRow(
+                            icon = Icons.Filled.Public,
+                            title = stringResource(R.string.spam_center_rule_international_title),
+                            subtitle = stringResource(R.string.spam_center_rule_international_subtitle),
+                            checked = checked,
+                            onCheckedChange = { checked = it },
+                        )
+                    }
+                    item {
+                        ManageBlockedListRow(blockedCount = blockedCount, onClick = onOpenBlockedList)
+                    }
+                    // Calls from spam-marked numbers. Home no longer shows these at all, so this
+                    // is the one place they're listed. Hidden until the first load finishes.
+                    spamCalls?.let { calls ->
+                        item { Spacer(modifier = Modifier.height(8.dp)) }
+                        item {
+                            Text(
+                                text = stringResource(R.string.spam_center_spam_calls_title),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.extendedColors.onSurfaceFaint,
+                            )
+                        }
+                        item { SpamCallsCard(calls = calls, onOpenContactDetail = onOpenContactDetail) }
+                    }
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
+                }
             }
-            item {
-                var checked by remember { mutableStateOf(true) }
-                RuleRow(
-                    icon = Icons.Filled.Shield,
-                    title = stringResource(R.string.spam_center_rule_auto_block_title),
-                    subtitle = stringResource(R.string.spam_center_rule_auto_block_subtitle),
-                    checked = checked,
-                    onCheckedChange = { checked = it },
-                )
-            }
-            item {
-                var checked by remember { mutableStateOf(true) }
-                RuleRow(
-                    icon = Icons.Filled.Storefront,
-                    title = stringResource(R.string.spam_center_rule_telemarketers_title),
-                    subtitle = stringResource(R.string.spam_center_rule_telemarketers_subtitle),
-                    checked = checked,
-                    onCheckedChange = { checked = it },
-                )
-            }
-            item {
-                var checked by remember { mutableStateOf(false) }
-                RuleRow(
-                    icon = Icons.Filled.Public,
-                    title = stringResource(R.string.spam_center_rule_international_title),
-                    subtitle = stringResource(R.string.spam_center_rule_international_subtitle),
-                    checked = checked,
-                    onCheckedChange = { checked = it },
-                )
-            }
-            item {
-                ManageBlockedListRow(blockedCount = blockedCount, onClick = onOpenBlockedList)
-            }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
         }
     }
 }
@@ -287,5 +320,40 @@ private fun ManageBlockedListRow(blockedCount: Int, onClick: () -> Unit) {
             contentDescription = null,
             tint = MaterialTheme.extendedColors.onSurfaceFaint,
         )
+    }
+}
+
+/** Spam calls as the same flat rows Home uses (one card, day headers, dividers); tapping one
+ * opens Contact Detail, where the number can be unmarked. */
+@Composable
+private fun SpamCallsCard(calls: List<RecentCallEntry>, onOpenContactDetail: (phoneNumber: String) -> Unit) {
+    val zone = ZoneId.systemDefault()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ListItemShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 14.dp, vertical = 4.dp),
+    ) {
+        if (calls.isEmpty()) {
+            Text(
+                text = stringResource(R.string.spam_center_no_spam_calls),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.extendedColors.mutedText,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+            return@Column
+        }
+        var previousDay: LocalDate? = null
+        calls.forEach { call ->
+            val day = Instant.ofEpochMilli(call.timestamp).atZone(zone).toLocalDate()
+            if (day != previousDay) {
+                CallLogDayHeader(timestamp = call.timestamp)
+            } else {
+                CallLogDivider()
+            }
+            previousDay = day
+            CallLogRow(call = call, count = 1, onClick = { onOpenContactDetail(call.phoneNumber) })
+        }
     }
 }

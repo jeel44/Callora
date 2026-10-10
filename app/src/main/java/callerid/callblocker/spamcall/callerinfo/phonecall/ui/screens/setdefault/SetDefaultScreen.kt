@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraAccent
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraPrimary
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.DarkOnSurfaceSoft
@@ -95,6 +96,14 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
     val roleRequestLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) {
+        // The system role-request sheet's ActivityResult only says the picker was dismissed, not
+        // that DIALER was actually granted (a user can back out or pick a different app and this
+        // callback still fires) — so re-checking isDialerRoleHeld here, the same real RoleManager
+        // confirmation resolveStartDestination/roleAlreadyHeld above already use, is what makes
+        // this the real grant point rather than just "the request round-trip completed".
+        if (isDialerRoleHeld(context)) {
+            AnalyticsHelper.logEvent("set_default_dialer")
+        }
         onContinue()
     }
 

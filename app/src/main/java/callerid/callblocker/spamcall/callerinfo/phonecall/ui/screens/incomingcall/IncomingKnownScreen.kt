@@ -16,6 +16,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraTheme
  */
 @Composable
 fun IncomingKnownScreen(
+    isResolvingIdentity: Boolean,
     displayName: String?,
     phoneNumber: String?,
     photoUri: String?,
@@ -27,6 +28,7 @@ fun IncomingKnownScreen(
     simAccountLabel: String? = null,
 ) {
     IncomingCallLayout(
+        isResolvingIdentity = isResolvingIdentity,
         displayName = displayName,
         phoneNumber = phoneNumber,
         photoUri = photoUri,
@@ -47,6 +49,7 @@ fun IncomingKnownScreen(
 private fun IncomingKnownScreenSavedContactPreview() {
     CalloraTheme {
         IncomingKnownScreen(
+            isResolvingIdentity = false,
             displayName = "Riya Sharma",
             phoneNumber = "+919000011223",
             photoUri = null,
@@ -63,6 +66,7 @@ private fun IncomingKnownScreenSavedContactPreview() {
 private fun IncomingKnownScreenUnknownPreview() {
     CalloraTheme {
         IncomingKnownScreen(
+            isResolvingIdentity = false,
             displayName = null,
             phoneNumber = "+916281904471",
             photoUri = null,

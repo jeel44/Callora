@@ -29,7 +29,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColor
  * Shared layout for the three onboarding pages: a fixed-size art container up top
  * (where the Lottie animation renders), headline + subtitle, page dots, and a
  * full-width primary action button. Each screen supplies its own art slot so the
- * per-asset TODO comment lives next to the screen it belongs to.
+ * per-asset TODO comment lives next to the screen it belongs to, plus an optional [adSlot].
  */
 @Composable
 fun OnboardingScaffold(
@@ -40,6 +40,7 @@ fun OnboardingScaffold(
     buttonLabel: String,
     onButtonClick: () -> Unit,
     modifier: Modifier = Modifier,
+    adSlot: @Composable () -> Unit = {},
     art: @Composable BoxScope.() -> Unit,
 ) {
     Scaffold(
@@ -83,7 +84,18 @@ fun OnboardingScaffold(
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            // The flexible gap between the copy and the page dots doubles as the inline ad slot
+            // (see OnboardingAdsViewModel) — centered in whatever space the art/copy above leave,
+            // so it never overlaps the illustration, headline, or button. Empty when no ad.
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                adSlot()
+            }
 
             PageIndicatorDots(pageCount = pageCount, activePage = activePage)
 

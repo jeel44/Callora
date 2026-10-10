@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -65,31 +68,38 @@ fun BlockedListScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { BlockedListTopBar(onBack = onBack) },
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { innerPadding ->
-        when {
-            !uiState.canManageBlockedNumbers -> BlockingUnavailableState(
-                modifier = Modifier.padding(innerPadding),
-                onOpenSetDefault = onOpenSetDefault,
-            )
-            !uiState.isLoading && uiState.blockedNumbers.isEmpty() -> NoBlockedNumbersState(
-                modifier = Modifier.padding(innerPadding),
-            )
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(uiState.blockedNumbers, key = { it.phoneNumber }) { entry ->
-                        BlockedNumberRow(
-                            entry = entry,
-                            onDelete = { viewModel.unblock(entry.phoneNumber) },
-                        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            BlockedListTopBar(onBack = onBack)
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    !uiState.canManageBlockedNumbers -> BlockingUnavailableState(
+                        modifier = Modifier.padding(innerPadding),
+                        onOpenSetDefault = onOpenSetDefault,
+                    )
+                    !uiState.isLoading && uiState.blockedNumbers.isEmpty() -> NoBlockedNumbersState(
+                        modifier = Modifier.padding(innerPadding),
+                    )
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                                .padding(horizontal = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            items(uiState.blockedNumbers, key = { it.phoneNumber }) { entry ->
+                                BlockedNumberRow(
+                                    entry = entry,
+                                    onDelete = { viewModel.unblock(entry.phoneNumber) },
+                                )
+                            }
+                            item { Spacer(modifier = Modifier.height(8.dp)) }
+                        }
                     }
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
                 }
             }
         }

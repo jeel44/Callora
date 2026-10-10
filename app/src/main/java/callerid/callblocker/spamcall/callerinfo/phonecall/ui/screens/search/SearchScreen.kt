@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -87,7 +90,11 @@ fun SearchScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,40 +146,41 @@ fun SearchScreen(
                     ),
                 )
             }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-        ) {
-            when {
-                !uiState.hasContactsPermission -> {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    PermissionPromptCard(
-                        message = stringResource(R.string.search_permission_message),
-                        onGrantClick = { contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
-                    )
-                }
-                uiState.query.isBlank() -> SearchEmptyState(
-                    icon = Icons.Filled.PersonSearch,
-                    message = stringResource(R.string.search_empty_prompt),
-                )
-                uiState.results.isEmpty() -> SearchEmptyState(
-                    icon = Icons.Filled.PersonSearch,
-                    message = stringResource(R.string.contacts_no_matches, uiState.query),
-                )
-                else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        item { Spacer(modifier = Modifier.height(4.dp)) }
-                        items(uiState.results) { contact ->
-                            SearchResultRow(
-                                contact = contact,
-                                onClick = { onOpenContactDetail(contact.phoneNumber) },
+            Box(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 20.dp),
+                ) {
+                    when {
+                        !uiState.hasContactsPermission -> {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            PermissionPromptCard(
+                                message = stringResource(R.string.search_permission_message),
+                                onGrantClick = { contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
                             )
                         }
-                        item { Spacer(modifier = Modifier.height(8.dp)) }
+                        uiState.query.isBlank() -> SearchEmptyState(
+                            icon = Icons.Filled.PersonSearch,
+                            message = stringResource(R.string.search_empty_prompt),
+                        )
+                        uiState.results.isEmpty() -> SearchEmptyState(
+                            icon = Icons.Filled.PersonSearch,
+                            message = stringResource(R.string.contacts_no_matches, uiState.query),
+                        )
+                        else -> {
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                item { Spacer(modifier = Modifier.height(4.dp)) }
+                                items(uiState.results) { contact ->
+                                    SearchResultRow(
+                                        contact = contact,
+                                        onClick = { onOpenContactDetail(contact.phoneNumber) },
+                                    )
+                                }
+                                item { Spacer(modifier = Modifier.height(8.dp)) }
+                            }
+                        }
                     }
                 }
             }

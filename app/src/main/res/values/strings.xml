@@ -31,6 +31,7 @@
     <string name="home_dialpad_content_description">Dialpad</string>
     <string name="home_notifications_content_description">Notifications</string>
     <string name="home_recent_section_title">RECENT</string>
+    <string name="home_title">Phone</string>
     <string name="home_call_log_permission_message">Grant contacts &amp; call log access to see your recent calls.</string>
     <string name="home_no_recent_calls">No recent calls yet.</string>
     <string name="home_call_log_permission_heading">Keep track of every call</string>
@@ -39,8 +40,6 @@
     <string name="home_greeting_default">Welcome back</string>
     <string name="home_protection_active">Protection active</string>
     <string name="home_search_hint">Search a number or name</string>
-    <string name="home_spam_protection_label">Spam protection</string>
-    <string name="home_coming_soon">Coming soon</string>
     <string name="home_call_content_description">Call %1$s</string>
     <string name="home_spam_badge">Spam</string>
 
@@ -208,6 +207,8 @@
     <string name="spam_center_title">Spam Center</string>
     <string name="spam_center_close_content_description">Close</string>
     <string name="spam_center_blocking_rules_title">Blocking rules</string>
+    <string name="spam_center_spam_calls_title">Spam calls</string>
+    <string name="spam_center_no_spam_calls">No spam calls in your recent call history.</string>
     <string name="spam_center_stat_blocked_week">Blocked this week</string>
     <string name="spam_center_stat_blocked_alltime">Blocked all-time</string>
     <string name="spam_center_rule_auto_block_title">Auto-block top spammers</string>
@@ -268,6 +269,9 @@
     <string name="language_select_subtitle">You can change this later in Settings.</string>
     <string name="language_select_continue">Continue</string>
     <string name="language_select_selected_content_description">Selected</string>
+    <!-- Required "this is an ad" badge on the Language Select native ad (AdMob policy). -->
+    <string name="native_ad_attribution">Ad</string>
+    <string name="onboarding_fullscreen_ad_close">Close ad</string>
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">This is what your calls will look like</string>
@@ -320,4 +324,11 @@
     <string name="contact_detail_clip_label_name">Contact name</string>
     <string name="contact_detail_clip_label_number">Phone number</string>
     <string name="contact_detail_clip_label_contact">Contact</string>
+    <string name="call_app_label">Phone</string>
+    <string name="incoming_urgent_label">Urgent?</string>
+    <string name="active_call_video_call_label">Video call</string>
+    <string name="active_call_hold_label">Hold</string>
+    <string name="call_more_sheet_title">More</string>
+    <string name="call_more_sheet_close_content_description">Close</string>
+    <string name="call_feature_unsupported_toast">%1$s isn\'t supported yet</string>
 </resources>

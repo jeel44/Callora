@@ -8,7 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
-import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallerIdentityCache
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.NotificationPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.permissions.queryPermissionsState
@@ -58,10 +58,13 @@ object MissedCallNotifier {
             if (!queryPermissionsState(context).notificationsGranted) return@withContext
 
             val isSpam = SpamMarkRepository().isMarkedAsSpam(context, phoneNumber)
-            val contactName = if (!isSpam) {
-                ContactsRepository().getContactByPhoneNumber(context, phoneNumber)?.name
-            } else {
-                null
+            // Already resolve-before-notify (one post, never number-then-name). Reuses the
+            // name the call itself resolved when it settled before hang-up, otherwise the warm
+            // CallerIdentityCache entry (or one indexed lookup) — no fresh query in the common case.
+            val contactName = when {
+                isSpam -> null
+                summary.isContactResolved -> summary.displayName
+                else -> CallerIdentityCache.resolve(context, phoneNumber)?.name
             }
             postNotification(context, phoneNumber, isSpam, contactName, endedAtMillis)
         }

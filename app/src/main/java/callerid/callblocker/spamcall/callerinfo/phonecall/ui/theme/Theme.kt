@@ -21,6 +21,12 @@ data class CalloraExtendedColors(
     val warning: Color,
     val onSurfaceSoft: Color,
     val onSurfaceFaint: Color,
+    // Flat call-log list tokens (Home, Spam Center) and the bottom nav's inactive tabs.
+    val callOutgoing: Color,
+    val callIncoming: Color,
+    val callMissed: Color,
+    val listDivider: Color,
+    val mutedText: Color,
 )
 
 private val LightExtendedColors = CalloraExtendedColors(
@@ -30,6 +36,11 @@ private val LightExtendedColors = CalloraExtendedColors(
     warning = CalloraWarning,
     onSurfaceSoft = LightOnSurfaceSoft,
     onSurfaceFaint = LightOnSurfaceFaint,
+    callOutgoing = LightCallOutgoing,
+    callIncoming = LightCallIncoming,
+    callMissed = LightCallMissed,
+    listDivider = LightListDivider,
+    mutedText = LightMutedText,
 )
 
 private val DarkExtendedColors = CalloraExtendedColors(
@@ -39,6 +50,11 @@ private val DarkExtendedColors = CalloraExtendedColors(
     warning = CalloraWarning,
     onSurfaceSoft = DarkOnSurfaceSoft,
     onSurfaceFaint = DarkOnSurfaceFaint,
+    callOutgoing = DarkCallOutgoing,
+    callIncoming = DarkCallIncoming,
+    callMissed = DarkCallMissed,
+    listDivider = DarkListDivider,
+    mutedText = DarkMutedText,
 )
 
 private val LocalCalloraExtendedColors = staticCompositionLocalOf { LightExtendedColors }

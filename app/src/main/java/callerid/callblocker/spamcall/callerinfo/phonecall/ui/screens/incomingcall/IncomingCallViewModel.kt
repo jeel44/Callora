@@ -29,12 +29,17 @@ class IncomingCallViewModel(application: Application) : AndroidViewModel(applica
     // This device's own "I marked this number as spam before" record — distinct from
     // callState.displayName == null (which just means "not a saved contact"), since a number can
     // be genuinely unknown without ever having been marked as spam by this user.
-    private val _isSpamMarked = MutableStateFlow(false)
-    val isSpamMarked: StateFlow<Boolean> = _isSpamMarked.asStateFlow()
+    // null = not read yet for the current number. Starts null (not false) because this flag
+    // picks the whole screen variant: defaulting to false painted the Known screen first and
+    // could then swap it for the Spam one once the read landed — the same "identity paints, then
+    // changes" flash as number -> name, so the caller's identity is held until this settles too.
+    private val _isSpamMarked = MutableStateFlow<Boolean?>(null)
+    val isSpamMarked: StateFlow<Boolean?> = _isSpamMarked.asStateFlow()
 
     init {
         viewModelScope.launch {
             callState.map { it.phoneNumber }.distinctUntilChangedBy { it }.collect { phoneNumber ->
+                _isSpamMarked.value = null
                 _isSpamMarked.value = if (phoneNumber != null) {
                     withContext(Dispatchers.IO) {
                         spamMarkRepository.isMarkedAsSpam(getApplication(), phoneNumber)

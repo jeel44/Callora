@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -52,6 +54,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -163,7 +166,11 @@ fun ContactDetailScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -200,44 +207,45 @@ fun ContactDetailScreen(
                     )
                 }
             }
-        },
-    ) { innerPadding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                val contact = uiState.contact
-                if (contact != null) {
-                    SavedContactContent(
-                        contact = contact,
-                        isBlocked = uiState.isBlocked,
-                        onBlockAction = onBlockAction,
-                        onCall = onCall,
-                    )
+            Box(modifier = Modifier.weight(1f)) {
+                if (uiState.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
                 } else {
-                    UnknownContactContent(
-                        phoneNumber = uiState.phoneNumber,
-                        isBlocked = uiState.isBlocked,
-                        spamMark = uiState.spamMark,
-                        onBlockAction = onBlockAction,
-                        onCall = onCall,
-                        onReport = viewModel::onReportClicked,
-                        onUnmarkSpam = viewModel::onUnmarkSpamClicked,
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        val contact = uiState.contact
+                        if (contact != null) {
+                            SavedContactContent(
+                                contact = contact,
+                                isBlocked = uiState.isBlocked,
+                                onBlockAction = onBlockAction,
+                                onCall = onCall,
+                            )
+                        } else {
+                            UnknownContactContent(
+                                phoneNumber = uiState.phoneNumber,
+                                isBlocked = uiState.isBlocked,
+                                spamMark = uiState.spamMark,
+                                onBlockAction = onBlockAction,
+                                onCall = onCall,
+                                onReport = viewModel::onReportClicked,
+                                onUnmarkSpam = viewModel::onUnmarkSpamClicked,
+                            )
+                        }
+                        CallHistorySection(callHistory = uiState.callHistory)
+                    }
                 }
-                CallHistorySection(callHistory = uiState.callHistory)
             }
         }
     }

@@ -7,7 +7,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,13 +27,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAddAlt
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,10 +47,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,13 +61,13 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.AddCallOptionsSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.ManualNumberEntryDialog
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallActionButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallAppLabelRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallScreenBackground
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerAvatar
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallSquircleButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.CallerIdentityHeader
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.ContextTag
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.SimAccountLabel
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.StatusPill
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.UtilityIconButton
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.EndCallButton
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.formatCallTimer
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraTheme
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
@@ -100,6 +101,7 @@ fun ActiveCallScreen(
     var dtmfTypedDigits by remember { mutableStateOf("") }
     var showAddCallOptions by remember { mutableStateOf(false) }
     var showManualNumberEntry by remember { mutableStateOf(false) }
+    var showMoreSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     // Add Call offers both a real system contact picker (ACTION_PICK on Phone.CONTENT_URI) and
@@ -147,7 +149,16 @@ fun ActiveCallScreen(
     }
 
     val displayName = callInfo.displayName
-    val moreOptionsToastText = stringResource(R.string.active_call_more_options_toast)
+    val videoCallLabel = stringResource(R.string.active_call_video_call_label)
+    val videoUnsupportedText = stringResource(R.string.call_feature_unsupported_toast, videoCallLabel)
+    val holdUnsupportedText = stringResource(
+        R.string.call_feature_unsupported_toast,
+        stringResource(R.string.active_call_hold_label),
+    )
+    // No video-upgrade or hold control exists in CallRepository (it only exposes mute/speaker/
+    // DTMF/disconnect) — both surface an honest toast rather than inventing call-control logic.
+    fun showVideoUnsupportedToast() = Toast.makeText(context, videoUnsupportedText, Toast.LENGTH_SHORT).show()
+    val headerInteractionSource = remember { MutableInteractionSource() }
 
     CallScreenBackground(isSpam = false, modifier = modifier) {
         Column(
@@ -158,69 +169,82 @@ fun ActiveCallScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
+            CallAppLabelRow {
                 IconButton(onClick = onMinimize) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = stringResource(R.string.call_minimize_content_description),
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onBackground,
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Filled.Call,
+                    contentDescription = null,
+                    tint = MaterialTheme.extendedColors.callOutgoing,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = formatCallTimer(elapsedSeconds),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
+                        .clickable(role = Role.Button, onClickLabel = videoCallLabel) { showVideoUnsupportedToast() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Videocam,
+                        contentDescription = videoCallLabel,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
 
-            StatusPill(text = formatCallTimer(elapsedSeconds), isSpam = false)
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(28.dp))
-
-            CallerAvatar(
+            // Reads the same CallRepository identity Outgoing Dialing/Incoming Call already
+            // resolved (no re-lookup here) — and respects isResolvingContactName, so a call
+            // answered/connected before the lookup settled never paints the raw number and then
+            // swaps to the name on this screen. Tapping it opens the contact (the old Contact
+            // button's action, which the redesigned 4-button row no longer has room for).
+            CallerIdentityHeader(
+                isResolving = callInfo.isResolvingContactName,
+                displayName = displayName,
+                phoneNumber = callInfo.phoneNumber,
                 photoUri = callInfo.photoUri,
-                initialsSource = displayName ?: callInfo.phoneNumber,
                 isSpam = false,
+                unknownLabel = stringResource(R.string.active_call_unknown_caller),
+                showAvatar = !showKeypad,
+                modifier = Modifier.clickable(
+                    interactionSource = headerInteractionSource,
+                    indication = null,
+                    enabled = callInfo.phoneNumber != null,
+                    onClickLabel = stringResource(R.string.active_call_contact_label),
+                ) { callInfo.phoneNumber?.let(onOpenContact) },
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (displayName != null) {
-                Text(
-                    text = displayName,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-                callInfo.phoneNumber?.let { phoneNumber ->
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = formatPhoneNumberForDisplay(phoneNumber),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 14.5.sp),
-                        color = Color.White.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            } else {
-                Text(
-                    text = callInfo.phoneNumber?.let { formatPhoneNumberForDisplay(it) } ?: stringResource(R.string.active_call_unknown_caller),
-                    style = MaterialTheme.typography.headlineSmall.copy(fontSize = 25.sp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
             callInfo.simAccountLabel?.let { simAccountLabel ->
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 SimAccountLabel(label = simAccountLabel)
             }
 
             val tagText = when {
                 isSpamMarked -> stringResource(R.string.call_tag_marked_spam)
-                displayName != null -> stringResource(R.string.call_tag_saved_contact)
+                !callInfo.isResolvingContactName && displayName != null -> stringResource(R.string.call_tag_saved_contact)
                 else -> null
             }
             if (tagText != null) {
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 ContextTag(text = tagText, isSpam = isSpamMarked)
             }
 
@@ -237,76 +261,63 @@ fun ActiveCallScreen(
                     onClose = { showKeypad = false },
                 )
             } else {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        UtilityIconButton(
-                            icon = Icons.Filled.MicOff,
-                            label = stringResource(R.string.call_mute_label),
-                            isActive = audioState.isMuted,
-                            onClick = { viewModel.setMuted(!audioState.isMuted) },
-                        )
-                        UtilityIconButton(
-                            icon = Icons.Filled.Dialpad,
-                            label = stringResource(R.string.active_call_keypad_label),
-                            isActive = showKeypad,
-                            onClick = { showKeypad = true },
-                        )
-                        UtilityIconButton(
-                            icon = Icons.AutoMirrored.Filled.VolumeUp,
-                            label = stringResource(R.string.call_speaker_label),
-                            isActive = audioState.isSpeakerOn,
-                            onClick = { viewModel.setSpeakerEnabled(!audioState.isSpeakerOn) },
-                        )
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        UtilityIconButton(
-                            icon = Icons.Filled.PersonAddAlt,
-                            label = stringResource(R.string.active_call_add_call_label),
-                            isActive = false,
-                            onClick = { showAddCallOptions = true },
-                        )
-                        UtilityIconButton(
-                            icon = Icons.Filled.Person,
-                            label = stringResource(R.string.active_call_contact_label),
-                            isActive = false,
-                            onClick = { callInfo.phoneNumber?.let(onOpenContact) },
-                        )
-                        UtilityIconButton(
-                            icon = Icons.Filled.MoreVert,
-                            label = stringResource(R.string.active_call_more_label),
-                            isActive = false,
-                            onClick = {
-                                // Never scoped/defined beyond this placeholder — real dialers'
-                                // "More" typically covers things like call-swap/manage-conference
-                                // that don't apply to this app's single-call architecture. Needs
-                                // a product decision on what (if anything) belongs here.
-                                Toast.makeText(context, moreOptionsToastText, Toast.LENGTH_SHORT).show()
-                            },
-                        )
-                    }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    CallSquircleButton(
+                        icon = Icons.Filled.Dialpad,
+                        label = stringResource(R.string.active_call_keypad_label),
+                        onClick = { showKeypad = true },
+                    )
+                    CallSquircleButton(
+                        icon = Icons.Filled.MicOff,
+                        label = stringResource(R.string.call_mute_label),
+                        isActive = audioState.isMuted,
+                        onClick = { viewModel.setMuted(!audioState.isMuted) },
+                    )
+                    CallSquircleButton(
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
+                        label = stringResource(R.string.call_speaker_label),
+                        isActive = audioState.isSpeakerOn,
+                        onClick = { viewModel.setSpeakerEnabled(!audioState.isSpeakerOn) },
+                    )
+                    CallSquircleButton(
+                        icon = Icons.Filled.MoreVert,
+                        label = stringResource(R.string.active_call_more_label),
+                        isActive = showMoreSheet,
+                        onClick = { showMoreSheet = true },
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            CallActionButton(
-                icon = Icons.Filled.CallEnd,
-                label = stringResource(R.string.active_call_end_call_label),
-                containerColor = MaterialTheme.extendedColors.spam,
-                contentColor = Color.White,
+            EndCallButton(
                 onClick = {
                     // Real disconnect, but also navigate unconditionally so the button always
                     // works even in the (should-be-rare) case no telecom callback ever arrives.
                     viewModel.endCall()
                     onEndCall()
                 },
-                size = 64.dp,
-                modifier = Modifier.padding(bottom = 46.dp),
+                modifier = Modifier.padding(bottom = 32.dp),
             )
         }
+    }
+
+    if (showMoreSheet) {
+        CallMoreSheet(
+            onDismissRequest = { showMoreSheet = false },
+            onAddCall = {
+                showMoreSheet = false
+                showAddCallOptions = true
+            },
+            onVideoCall = {
+                showMoreSheet = false
+                showVideoUnsupportedToast()
+            },
+            onHold = {
+                showMoreSheet = false
+                Toast.makeText(context, holdUnsupportedText, Toast.LENGTH_SHORT).show()
+            },
+        )
     }
 
     if (showAddCallOptions) {
@@ -354,13 +365,13 @@ private fun DtmfKeypad(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.active_call_hide_keypad_content_description),
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onBackground,
                 )
             }
             Text(
                 text = if (typedDigits.isEmpty()) " " else typedDigits,
                 style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
@@ -387,9 +398,9 @@ private fun DtmfKeypad(
 private fun DtmfKey(digit: Char, onPress: () -> Unit, onRelease: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(64.dp)
+            .size(60.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(digit) {
                 detectTapGestures(
                     onPress = {
@@ -404,7 +415,7 @@ private fun DtmfKey(digit: Char, onPress: () -> Unit, onRelease: () -> Unit) {
         Text(
             text = digit.toString(),
             style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

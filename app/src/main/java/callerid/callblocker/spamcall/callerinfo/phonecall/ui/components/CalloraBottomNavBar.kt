@@ -3,11 +3,15 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Home
@@ -25,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
@@ -80,32 +85,48 @@ fun CalloraBottomNavBar(
         ),
     )
 
-    Row(
+    // Flat style: a hairline on top instead of elevation; active tab = primary blue, filled icon,
+    // bold label; inactive = muted gray, outlined icon, regular label.
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding()
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .background(MaterialTheme.colorScheme.surface),
     ) {
-        items.forEach { item ->
-            val tint = if (item.selected) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.onSurfaceFaint
-            Column(
-                modifier = Modifier
-                    .clickable(onClick = item.onClick)
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    imageVector = if (item.selected) item.selectedIcon else item.unselectedIcon,
-                    contentDescription = item.label,
-                    tint = tint,
-                )
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = tint,
-                )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.extendedColors.listDivider),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            items.forEach { item ->
+                val tint = if (item.selected) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.mutedText
+                Column(
+                    modifier = Modifier
+                        .clickable(onClick = item.onClick)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector = if (item.selected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.label,
+                        tint = tint,
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (item.selected) FontWeight.Bold else FontWeight.Normal,
+                        color = tint,
+                    )
+                }
             }
         }
     }

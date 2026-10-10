@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +52,9 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatDialpadInput
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
 
 private data class DialpadKeyData(val digit: String, val letters: String)
 
@@ -91,7 +96,11 @@ fun DialpadScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -106,94 +115,104 @@ fun DialpadScreen(
                     )
                 }
             }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = if (typedNumber.isEmpty()) "" else formatPhoneNumberForDisplay(typedNumber),
-                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                )
-            }
-
-            if (typedNumber.isNotEmpty() && matchingContacts.isNotEmpty()) {
-                LazyColumn(
+            Box(modifier = Modifier.weight(1f)) {
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    items(matchingContacts, key = { it.phoneNumber }) { contact ->
-                        MatchingContactRow(
-                            contact = contact,
-                            onClick = { typedNumber = contact.phoneNumber },
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = formatDialpadInput(typedNumber),
+                            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
                         )
                     }
-                }
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                DialpadKeys.chunked(3).forEach { rowKeys ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                        rowKeys.forEach { key ->
-                            DialpadKey(
-                                digit = key.digit,
-                                letters = key.letters,
-                                onClick = { typedNumber += key.digit },
-                            )
+                    if (typedNumber.isNotEmpty() && matchingContacts.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(matchingContacts, key = { it.phoneNumber }) { contact ->
+                                MatchingContactRow(
+                                    contact = contact,
+                                    onClick = { typedNumber = contact.phoneNumber },
+                                )
+                            }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        DialpadKeys.chunked(3).forEach { rowKeys ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                                rowKeys.forEach { key ->
+                                    DialpadKey(
+                                        digit = key.digit,
+                                        letters = key.letters,
+                                        onClick = { typedNumber += key.digit },
+                                        // Long-press 0 types "+", as in Google's dialer — the only
+                                        // way to enter an international number by hand.
+                                        onLongClick = if (key.digit == "0") {
+                                            { typedNumber += "+" }
+                                        } else {
+                                            null
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            }
 
-            Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.weight(1f))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    if (typedNumber.isNotEmpty()) {
-                        BackspaceButton(
-                            onClick = { typedNumber = typedNumber.dropLast(1) },
-                            onClear = { typedNumber = "" },
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (typedNumber.isNotEmpty()) {
+                                BackspaceButton(
+                                    onClick = { typedNumber = typedNumber.dropLast(1) },
+                                    onClear = { typedNumber = "" },
+                                )
+                            }
+                        }
+
+                        CallButton(
+                            enabled = typedNumber.isNotEmpty(),
+                            // Dials what's displayed: +91-normalized for a complete Indian number,
+                            // otherwise exactly what was typed (see normalizeDialedNumber).
+                            onClick = { if (typedNumber.isNotEmpty()) onCall(normalizeDialedNumber(typedNumber)) },
                         )
+
+                        Box(modifier = Modifier.weight(1f))
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-
-                CallButton(
-                    enabled = typedNumber.isNotEmpty(),
-                    onClick = { if (typedNumber.isNotEmpty()) onCall(typedNumber) },
-                )
-
-                Box(modifier = Modifier.weight(1f))
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -243,14 +262,15 @@ private fun MatchingContactRow(contact: Contact, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DialpadKey(digit: String, letters: String, onClick: () -> Unit) {
+private fun DialpadKey(digit: String, letters: String, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     Box(
         modifier = Modifier
             .size(72.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

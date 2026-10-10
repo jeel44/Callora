@@ -27,6 +27,7 @@
     <string name="home_dialpad_content_description">Ringetastatur</string>
     <string name="home_notifications_content_description">Varsler</string>
     <string name="home_recent_section_title">NYLIGE</string>
+    <string name="home_title">Telefon</string>
     <string name="home_call_log_permission_message">Gi tilgang til kontakter og anropslogg for å se nylige anrop.</string>
     <string name="home_no_recent_calls">Ingen nylige anrop ennå.</string>
     <string name="home_call_log_permission_heading">Hold oversikt over alle anrop</string>
@@ -35,8 +36,6 @@
     <string name="home_greeting_default">Velkommen tilbake</string>
     <string name="home_protection_active">Beskyttelse aktiv</string>
     <string name="home_search_hint">Søk etter et nummer eller navn</string>
-    <string name="home_spam_protection_label">Spambeskyttelse</string>
-    <string name="home_coming_soon">Kommer snart</string>
     <string name="home_call_content_description">Ring %1$s</string>
     <string name="home_spam_badge">Spam</string>
 
@@ -204,6 +203,8 @@
     <string name="spam_center_title">Spamsenter</string>
     <string name="spam_center_close_content_description">Lukk</string>
     <string name="spam_center_blocking_rules_title">Blokkeringsregler</string>
+    <string name="spam_center_spam_calls_title">Spamanrop</string>
+    <string name="spam_center_no_spam_calls">Ingen spamanrop i den nylige anropsloggen.</string>
     <string name="spam_center_stat_blocked_week">Blokkert denne uken</string>
     <string name="spam_center_stat_blocked_alltime">Blokkert totalt</string>
     <string name="spam_center_rule_auto_block_title">Blokker de mest rapporterte spammerne automatisk</string>
@@ -264,6 +265,9 @@
     <string name="language_select_subtitle">Du kan endre dette senere i innstillingene.</string>
     <string name="language_select_continue">Fortsett</string>
     <string name="language_select_selected_content_description">Valgt</string>
+    <!-- Required "this is an ad" badge on the Language Select native ad (AdMob policy). -->
+    <string name="native_ad_attribution">Annonse</string>
+    <string name="onboarding_fullscreen_ad_close">Lukk annonse</string>
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Slik vil anropene dine se ut</string>
@@ -316,4 +320,11 @@
     <string name="contact_detail_clip_label_name">Kontaktnavn</string>
     <string name="contact_detail_clip_label_number">Telefonnummer</string>
     <string name="contact_detail_clip_label_contact">Kontakt</string>
+    <string name="call_app_label">Telefon</string>
+    <string name="incoming_urgent_label">Haster?</string>
+    <string name="active_call_video_call_label">Videosamtale</string>
+    <string name="active_call_hold_label">Sett på vent</string>
+    <string name="call_more_sheet_title">Mer</string>
+    <string name="call_more_sheet_close_content_description">Lukk</string>
+    <string name="call_feature_unsupported_toast">%1$s støttes ikke ennå</string>
 </resources>

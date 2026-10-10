@@ -7,14 +7,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,24 +23,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CallMade
-import androidx.compose.material.icons.automirrored.filled.CallMissed
-import androidx.compose.material.icons.automirrored.filled.CallReceived
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,11 +49,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -66,20 +59,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptKind
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptRepository
-import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
-import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.BottomNavDestination
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CalloraBottomNavBar
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDayHeader
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDivider
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogRow
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.HomeBannerAdSlot
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.heightDp
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPromptCard
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SwipeActionRow
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CardShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeCallTimestamp
-import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 @Composable
@@ -96,6 +89,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listItems by viewModel.listItems.collectAsState()
+    val bannerSlotHeightDp = viewModel.bannerAdController.state.collectAsState().value.heightDp
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -141,12 +136,14 @@ fun HomeScreen(
     // but the header/footer items above and below the call rows are a small fixed count, so
     // "near the end of the whole list" reliably means "near the end of the loaded call history".
     // loadMore() itself is idempotent (guarded on isLoadingMore/hasMoreCalls), so firing this a
-    // few times during a fast fling is harmless.
+    // few times during a fast fling is harmless. The raw call count is read too: spam calls are
+    // hidden from the list, so a page that turned out to be all spam adds no visible rows and the
+    // layout alone would never re-trigger the check.
     LaunchedEffect(listState) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
             val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@snapshotFlow null
-            lastVisibleIndex to layoutInfo.totalItemsCount
+            Triple(lastVisibleIndex, layoutInfo.totalItemsCount, uiState.recentCalls.size)
         }.collect { visible ->
             val (lastVisibleIndex, totalItemsCount) = visible ?: return@collect
             if (lastVisibleIndex >= totalItemsCount - 5) {
@@ -157,10 +154,20 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            HomeTopBar(ownerName = uiState.ownerName, onOpenNotifications = onOpenNotifications)
-        },
+        // Flat list: rows sit straight on the page (white / near-black), no cards.
+        containerColor = MaterialTheme.colorScheme.surface,
+        // HomeTopBar is deliberately NOT in Scaffold's topBar slot. Scaffold derives the content's
+        // top padding from the topBar's measured height inside its own SubcomposeLayout pass, and
+        // HomeTopBar's height includes the status-bar inset (statusBarsPadding) — on a cold start
+        // that inset can still be 0 on the first measure. The header then re-measured itself taller
+        // once the inset arrived, but the content's padding stayed at the stale height (80dp vs
+        // 103dp here) until some unrelated recomposition, so the search bar and everything under it
+        // dropped ~23dp a frame after first paint. As a plain Column child above the list, the
+        // header's size change re-lays-out its siblings in the same pass, so the two can't diverge.
+        // contentWindowInsets drops only the top side because HomeTopBar already handles the status
+        // bar itself; left at the default, a topBar-less Scaffold would pad the top by it a second
+        // time. Horizontal/bottom stay, so landscape nav-bar/cutout insets still reach the content.
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         bottomBar = {
             CalloraBottomNavBar(
                 selected = BottomNavDestination.HOME,
@@ -176,80 +183,115 @@ fun HomeScreen(
                 shape = RoundedCornerShape(20.dp),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(56.dp),
+                // Scaffold anchors the FAB just above the bottom nav — exactly where the banner
+                // sits — so lift it by the banner's height rather than drawing over the ad.
+                modifier = Modifier.padding(bottom = bannerSlotHeightDp.dp).size(56.dp),
             ) {
                 Icon(imageVector = Icons.Filled.Dialpad, contentDescription = stringResource(R.string.home_dialpad_content_description))
             }
         },
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-            item { SearchBar(onClick = onOpenSearch) }
-            item { Spacer(modifier = Modifier.height(4.dp)) }
-            item { StatsCard(onClick = onOpenSpamCenter) }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-            item {
-                Text(
-                    text = stringResource(R.string.home_recent_section_title),
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.5.sp),
-                    color = MaterialTheme.extendedColors.onSurfaceFaint,
-                )
-            }
-            if (!uiState.hasCallLogPermission) {
-                item {
-                    PermissionPromptCard(
-                        message = stringResource(R.string.home_call_log_permission_message),
-                        onGrantClick = { requestCallLogPermissions() },
-                    )
-                }
-            } else if (!uiState.isLoading && uiState.recentCalls.isEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.home_no_recent_calls),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.extendedColors.onSurfaceFaint,
-                    )
-                }
-            } else {
-                items(uiState.recentCalls, key = { call -> call.id }) { call ->
-                    // Memoized on phoneNumber (not recreated fresh every time this item content
-                    // runs) so RecentCallRow's onClick/onCall params stay referentially stable
-                    // across unrelated recompositions (e.g. isLoadingMore flipping during infinite
-                    // scroll) — otherwise every visible row would fail Compose's skip check on
-                    // these lambda params and fully recompose on every such state change, which is
-                    // exactly what happens while scrolling near the end of the loaded list.
-                    val onRowClick = remember(call.phoneNumber) { { onOpenContactDetail(call.phoneNumber) } }
-                    val onRowCall = remember(call.phoneNumber) { { onCall(call.phoneNumber) } }
-                    RecentCallRow(
-                        call = call,
-                        onClick = onRowClick,
-                        onCall = onRowCall,
-                    )
-                }
-                if (uiState.isLoadingMore) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            HomeTopBar(onOpenNotifications = onOpenNotifications)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 20.dp),
+            ) {
+                item { Spacer(modifier = Modifier.height(4.dp)) }
+                item { SearchBar(onClick = onOpenSearch) }
+                if (!uiState.hasCallLogPermission) {
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        PermissionPromptCard(
+                            message = stringResource(R.string.home_call_log_permission_message),
+                            onGrantClick = { requestCallLogPermissions() },
+                        )
+                    }
+                } else if (uiState.isLoading && uiState.recentCalls.isEmpty()) {
+                    // Genuine first load only: HomeViewModel keeps isLoading false whenever it has a
+                    // last-known snapshot to show. Nothing at all (not even this) while the on-disk
+                    // snapshot is still being read — that takes milliseconds and usually has data.
+                    if (!uiState.isRestoringSnapshot) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                } else if (listItems.isEmpty()) {
+                    // Also covers a call log holding only spam calls — those live in Spam Center.
+                    item {
+                        Text(
+                            text = stringResource(R.string.home_no_recent_calls),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.extendedColors.mutedText,
+                            modifier = Modifier.padding(top = 16.dp),
+                        )
+                    }
+                } else {
+                    items(listItems, key = { item -> item.key }, contentType = { item -> item::class }) { item ->
+                        when (item) {
+                            is HomeListItem.DayHeader -> CallLogDayHeader(timestamp = item.timestamp)
+                            is HomeListItem.CallGroup -> {
+                                val call = item.latest
+                                // Memoized on phoneNumber (not recreated fresh every time this item
+                                // content runs) so the row's lambda params stay referentially stable
+                                // across unrelated recompositions (e.g. isLoadingMore flipping during
+                                // infinite scroll) — otherwise every visible row would fail Compose's
+                                // skip check and fully recompose on every such state change.
+                                val onRowClick = remember(call.phoneNumber) { { onOpenContactDetail(call.phoneNumber) } }
+                                val onRowCall = remember(call.phoneNumber) { { onCall(call.phoneNumber) } }
+                                Column {
+                                    if (!item.isFirstInDay) CallLogDivider()
+                                    SwipeActionRow(
+                                        enabled = call.phoneNumber.isNotBlank(),
+                                        onCall = onRowCall,
+                                        onMessage = {
+                                            context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${call.phoneNumber}")))
+                                        },
+                                        shape = RectangleShape,
+                                    ) {
+                                        CallLogRow(
+                                            call = call,
+                                            count = item.calls.size,
+                                            onClick = onRowClick,
+                                            // Opaque, so the swipe's reveal stays hidden until dragged.
+                                            modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (uiState.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }
+                item { Spacer(modifier = Modifier.height(8.dp)) }
             }
-            item { Spacer(modifier = Modifier.height(8.dp)) }
+            // Below the list, above the bottom nav (Scaffold's innerPadding already excludes the
+            // nav bar): the list's weight(1f) shrinks to make room, so nothing scrolls under it.
+            HomeBannerAdSlot(controller = viewModel.bannerAdController)
         }
     }
 
@@ -277,45 +319,20 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeTopBar(ownerName: String?, onOpenNotifications: () -> Unit) {
+private fun HomeTopBar(onOpenNotifications: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val initial = ownerName?.firstOrNull { it.isLetter() }?.uppercaseChar()
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = initial?.toString() ?: "?",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = ownerName?.let { stringResource(R.string.home_greeting_with_name, it) }
-                    ?: stringResource(R.string.home_greeting_default),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.home_protection_active),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.extendedColors.onSurfaceFaint,
-            )
-        }
-
+        Text(
+            text = stringResource(R.string.home_title),
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
         IconButton(onClick = onOpenNotifications) {
             Icon(
                 imageVector = Icons.Filled.Notifications,
@@ -332,7 +349,7 @@ private fun SearchBar(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(ListItemShape)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -350,185 +367,3 @@ private fun SearchBar(onClick: () -> Unit) {
         )
     }
 }
-
-@Composable
-private fun StatsCard(onClick: () -> Unit) {
-    // No real spam-detection stage exists yet — this used to show a fabricated
-    // "18 spam calls blocked" number. Replaced with an honest "coming soon" state
-    // rather than inventing a number; the card still routes to Spam Center.
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(CardShape)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.extendedColors.accent),
-                ),
-            )
-            .clickable(onClick = onClick)
-            .padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.home_spam_protection_label),
-                style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp),
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.home_coming_soon),
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 22.sp),
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
-        Icon(
-            imageVector = Icons.Filled.Shield,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(30.dp),
-        )
-    }
-}
-
-@Composable
-private fun RecentCallRow(call: RecentCallEntry, onClick: () -> Unit, onCall: () -> Unit) {
-    val context = LocalContext.current
-    SwipeActionRow(
-        enabled = call.phoneNumber.isNotBlank(),
-        onCall = onCall,
-        onMessage = {
-            context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${call.phoneNumber}")))
-        },
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(ListItemShape)
-                .background(
-                    if (call.isSpam) {
-                        MaterialTheme.extendedColors.spam.copy(alpha = 0.12f)
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                )
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val displayName = call.name ?: call.formattedPhoneNumber
-
-            // Open-Contact-Detail's clickable region is scoped to JUST the avatar/name/timestamp
-            // (weight(1f), not the whole row) — the call icon below is a sibling OUTSIDE this
-            // Row entirely, not nested inside it, so there's no overlap between "open contact
-            // detail" and "place a call" at the same screen coordinates.
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onClick),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (call.photoUri != null) {
-                    AsyncImage(
-                        model = call.photoUri,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape),
-                    )
-                } else {
-                    val initial = displayName.firstOrNull { it.isLetter() }?.uppercaseChar() ?: '#'
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = initial.toString(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val (directionIcon, tint) = when (call.callType) {
-                            CallType.INCOMING -> Icons.AutoMirrored.Filled.CallReceived to MaterialTheme.extendedColors.onSurfaceFaint
-                            CallType.OUTGOING -> Icons.AutoMirrored.Filled.CallMade to MaterialTheme.extendedColors.onSurfaceFaint
-                            CallType.MISSED -> Icons.AutoMirrored.Filled.CallMissed to MaterialTheme.extendedColors.spam
-                            CallType.OTHER -> Icons.AutoMirrored.Filled.CallReceived to MaterialTheme.extendedColors.onSurfaceFaint
-                        }
-                        Icon(
-                            imageVector = directionIcon,
-                            contentDescription = null,
-                            tint = tint,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = formatRelativeCallTimestamp(call.timestamp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.extendedColors.onSurfaceFaint,
-                        )
-                    }
-                }
-            }
-
-            if (call.isSpam) {
-                Spacer(modifier = Modifier.width(8.dp))
-                SpamBadge()
-            }
-
-            // Direct one-tap call, in addition to (not instead of) SwipeActionRow's swipe-to-call.
-            // A sibling of (not nested inside) the clickable Row above — no background/filled
-            // shape, matching the row's other small inline icons (e.g. the missed-call arrow).
-            if (call.phoneNumber.isNotBlank()) {
-                IconButton(onClick = onCall, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.Filled.Call,
-                        contentDescription = stringResource(R.string.home_call_content_description, displayName),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** Filled danger-colored pill marking a call-log row whose number is on this device's local
- * spam list (see [HomeViewModel.annotateSpam]) — sits opposite the avatar, before the call
- * button, so it's visible without needing to open Contact Detail to learn the number was marked. */
-@Composable
-private fun SpamBadge() {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(percent = 50))
-            .background(MaterialTheme.extendedColors.spam)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Warning,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(12.dp),
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = stringResource(R.string.home_spam_badge),
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-            color = Color.White,
-        )
-    }
-}
-

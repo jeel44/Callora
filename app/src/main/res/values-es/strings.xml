@@ -27,6 +27,7 @@
     <string name="home_dialpad_content_description">Teclado</string>
     <string name="home_notifications_content_description">Notificaciones</string>
     <string name="home_recent_section_title">RECIENTES</string>
+    <string name="home_title">Teléfono</string>
     <string name="home_call_log_permission_message">Concede acceso a los contactos y al registro de llamadas para ver tus llamadas recientes.</string>
     <string name="home_no_recent_calls">Aún no hay llamadas recientes.</string>
     <string name="home_call_log_permission_heading">Lleva un registro de cada llamada</string>
@@ -35,8 +36,6 @@
     <string name="home_greeting_default">Bienvenido de nuevo</string>
     <string name="home_protection_active">Protección activa</string>
     <string name="home_search_hint">Busca un número o nombre</string>
-    <string name="home_spam_protection_label">Protección contra spam</string>
-    <string name="home_coming_soon">Próximamente</string>
     <string name="home_call_content_description">Llamar a %1$s</string>
     <string name="home_spam_badge">Spam</string>
 
@@ -204,6 +203,8 @@
     <string name="spam_center_title">Centro de spam</string>
     <string name="spam_center_close_content_description">Cerrar</string>
     <string name="spam_center_blocking_rules_title">Reglas de bloqueo</string>
+    <string name="spam_center_spam_calls_title">Llamadas de spam</string>
+    <string name="spam_center_no_spam_calls">No hay llamadas de spam en tu historial reciente.</string>
     <string name="spam_center_stat_blocked_week">Bloqueadas esta semana</string>
     <string name="spam_center_stat_blocked_alltime">Bloqueadas en total</string>
     <string name="spam_center_rule_auto_block_title">Bloquear automáticamente a los principales spammers</string>
@@ -264,6 +265,9 @@
     <string name="language_select_subtitle">Puedes cambiarlo más tarde en Ajustes.</string>
     <string name="language_select_continue">Continuar</string>
     <string name="language_select_selected_content_description">Seleccionado</string>
+    <!-- Required "this is an ad" badge on the Language Select native ad (AdMob policy). -->
+    <string name="native_ad_attribution">Anuncio</string>
+    <string name="onboarding_fullscreen_ad_close">Cerrar anuncio</string>
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Así se verán tus llamadas</string>
@@ -316,4 +320,11 @@
     <string name="contact_detail_clip_label_name">Nombre del contacto</string>
     <string name="contact_detail_clip_label_number">Número de teléfono</string>
     <string name="contact_detail_clip_label_contact">Contacto</string>
+    <string name="call_app_label">Teléfono</string>
+    <string name="incoming_urgent_label">¿Urgente?</string>
+    <string name="active_call_video_call_label">Videollamada</string>
+    <string name="active_call_hold_label">En espera</string>
+    <string name="call_more_sheet_title">Más</string>
+    <string name="call_more_sheet_close_content_description">Cerrar</string>
+    <string name="call_feature_unsupported_toast">%1$s aún no es compatible</string>
 </resources>

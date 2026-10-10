@@ -9,9 +9,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallSummary
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraTheme
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
+import com.google.firebase.analytics.FirebaseAnalytics
 
 /**
  * Truecaller-style "call ended" popup. Launched from
@@ -56,6 +58,21 @@ class CallEndedActivity : AppCompatActivity() {
             finish()
             return
         }
+
+        // This Activity sits outside CalloraNavHost's Compose nav graph entirely, so the central
+        // OnDestinationChangedListener there (see CalloraNavHost) never sees it — this is the
+        // explicit screen_view call that fills that gap. Fired here, right after the early-return
+        // above, since this is genuinely the earliest point this screen is confirmed to actually
+        // show (no more finish()-and-bail cases follow); doesn't need to wait on any async data
+        // (unlike the call_ended event below), unlike CalloraNavHost's per-destination event.
+        AnalyticsHelper.logEvent(
+            FirebaseAnalytics.Event.SCREEN_VIEW,
+            Bundle().apply {
+                putString(FirebaseAnalytics.Param.SCREEN_NAME, "call_ended")
+                putString(FirebaseAnalytics.Param.SCREEN_CLASS, "call_ended")
+            },
+        )
+
         val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
         val durationSeconds = intent.getLongExtra(EXTRA_DURATION_SECONDS, 0L)
         val endedAtMillis = intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis())

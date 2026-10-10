@@ -114,9 +114,14 @@ private fun OngoingCallBanner(
         label = "call_banner_pulse_alpha",
     )
 
-    val name = state.displayName
-        ?: state.phoneNumber?.let { formatPhoneNumberForDisplay(it) }
-        ?: stringResource(R.string.active_call_unknown_caller)
+    // Blank while the contact lookup is pending (same rule as CallerIdentityHeader) — never the
+    // raw number only to swap it for the name a moment later.
+    val name = when {
+        state.isResolvingContactName -> ""
+        else -> state.displayName
+            ?: state.phoneNumber?.let { formatPhoneNumberForDisplay(it) }
+            ?: stringResource(R.string.active_call_unknown_caller)
+    }
 
     Row(
         modifier = modifier

@@ -6,7 +6,8 @@ import android.telecom.CallAudioState
 import android.telecom.InCallService
 import android.telecom.VideoProfile
 import android.util.Log
-import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallerIdentityCache
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val TAG = "CallRepository"
 
@@ -21,13 +23,13 @@ enum class CallUiState { NONE, DIALING, RINGING, ACTIVE, DISCONNECTED }
 
 /** [displayName] is the single, shared contact-name resolution for the entire call lifecycle —
  * looked up once per phone number and carried through ringing → answered → active → ended, so
- * every screen (Incoming Call, Active Call, the ongoing-call banner/notification) reads the same
- * value instead of each re-deriving it independently. Starts null and is filled in asynchronously
- * once the ContentResolver lookup resolves (it can't complete synchronously with the telecom
- * state change that triggers it) — [isResolvingContactName] is what lets a caller (see
- * OutgoingDialingScreen) tell "still resolving, null so far" apart from "resolved, genuinely no
- * saved contact," so it can show a neutral placeholder for the former instead of briefly
- * rendering the raw number and then replacing it with the resolved name a moment later. */
+ * every screen (Incoming Call, Outgoing Dialing, Active Call, the ongoing-call banner/notification)
+ * reads the same value instead of each re-deriving it independently. Filled synchronously from
+ * [CallerIdentityCache] when that was already warmed for this number (the normal case — see its
+ * doc), otherwise asynchronously. [isResolvingContactName] is what lets every caller tell "still
+ * resolving, null so far" apart from "resolved, genuinely no saved contact": while it's true a
+ * surface must render a neutral placeholder (see CallerIdentityHeader), never the raw number —
+ * otherwise the number paints first and the name replaces it a moment later (a visible flash). */
 data class ActiveCallInfo(
     val phoneNumber: String?,
     val displayName: String?,
@@ -46,7 +48,14 @@ data class ActiveCallInfo(
  * removed — AfterCallScreen reads this once (see [lastCallSummary]) rather than the live
  * [callState], which resets moments after the call ends; without capturing it here that name
  * resolution would already be gone by the time AfterCallScreen renders. */
-data class CallSummary(val phoneNumber: String?, val displayName: String?, val durationSeconds: Long)
+data class CallSummary(
+    val phoneNumber: String?,
+    val displayName: String?,
+    val durationSeconds: Long,
+    // False only when the call ended before its contact lookup settled — consumers (see
+    // MissedCallNotifier) then resolve it themselves instead of trusting a null [displayName].
+    val isContactResolved: Boolean = true,
+)
 
 /** The app-wide "there's an outgoing call in progress" fact — non-null for any of
  * DIALING/RINGING/ACTIVE of an OUTGOING call (never for an incoming ringing call, which already
@@ -61,6 +70,7 @@ data class ActiveCallUiState(
     val state: CallUiState,
     val connectTimestampMillis: Long?,
     val photoUri: String? = null,
+    val isResolvingContactName: Boolean = false,
 )
 
 /** Real mute/speaker state, mirrored from [InCallService.getCallAudioState]/onCallAudioStateChanged
@@ -122,6 +132,11 @@ object CallRepository {
     // its own), since a plain singleton object otherwise has nowhere to get one.
     private var appContext: Context? = null
     private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Normalized number of the lookup currently in flight, so repeated telecom state changes for
+    // the same number (CONNECTING -> DIALING -> ...) don't each launch a duplicate query. Only
+    // touched on the main thread, like every other write to _callState (see resolveDisplayName).
+    private var inFlightLookupKey: String? = null
 
     // The system only ever binds one InCallServiceImpl instance at a time (see that class's own
     // doc comment) — setMuted/setAudioRoute live on InCallService itself, not on Call, so this is
@@ -195,6 +210,24 @@ object CallRepository {
         _activeCallUiState.value = null
     }
 
+    /** Called right after [reset], before TelecomManager.placeCall — seeds [callState] with the
+     * number being dialed and its identity (straight from [CallerIdentityCache] when warm, else
+     * marked resolving with the lookup already started), so Outgoing Dialing's first frames —
+     * which render before the system's onCallAdded arrives — never show the raw number only to
+     * swap it for the name. [CallUiState] stays NONE; nothing navigates on this. Also attaches
+     * [context]: InCallServiceImpl may not have been bound yet in this process. */
+    fun prepareOutgoingCall(context: Context, phoneNumber: String) {
+        attachContext(context)
+        val cached = CallerIdentityCache.peek(phoneNumber)
+        _callState.value = emptyState().copy(
+            phoneNumber = phoneNumber,
+            displayName = cached?.contact?.name,
+            photoUri = cached?.contact?.photoUri,
+            isResolvingContactName = cached == null,
+        )
+        if (cached == null) resolveDisplayName(phoneNumber)
+    }
+
     fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded: real Call object received from InCallServiceImpl")
         trackedCall?.unregisterCallback(callback)
@@ -219,6 +252,7 @@ object CallRepository {
             phoneNumber = info.phoneNumber,
             displayName = info.displayName,
             durationSeconds = durationSeconds,
+            isContactResolved = !info.isResolvingContactName,
         )
         _lastCallSummary.value = summary
 
@@ -253,77 +287,94 @@ object CallRepository {
 
     private fun applyCallState(call: Call, state: Int) {
         val number = call.details?.handle?.schemeSpecificPart
+        val previous = _callState.value
         val uiState = when (state) {
             Call.STATE_CONNECTING, Call.STATE_DIALING, Call.STATE_SELECT_PHONE_ACCOUNT -> CallUiState.DIALING
             Call.STATE_RINGING, Call.STATE_SIMULATED_RINGING -> CallUiState.RINGING
             Call.STATE_ACTIVE -> CallUiState.ACTIVE
             Call.STATE_DISCONNECTED, Call.STATE_DISCONNECTING -> CallUiState.DISCONNECTED
-            else -> _callState.value.state
+            else -> previous.state
         }
-        val previous = _callState.value
         val resolvedNumber = number ?: previous.phoneNumber
         val connectTimestamp = if (uiState == CallUiState.ACTIVE) {
             previous.connectTimestampMillis ?: System.currentTimeMillis()
         } else {
             previous.connectTimestampMillis
         }
-        // Keep whatever name/photo is already resolved as long as it's still the same number —
-        // only a genuinely new number needs a fresh (and initially null, pending) lookup.
-        val sameNumber = resolvedNumber == previous.phoneNumber
-        val displayName = if (sameNumber) previous.displayName else null
-        val photoUri = if (sameNumber) previous.photoUri else null
-        val isResolvingContactName = if (sameNumber) previous.isResolvingContactName else resolvedNumber != null
+        // Same party = same number once normalized: telecom's handle can be formatted differently
+        // from the number prepareOutgoingCall seeded ("+91 90000 11223" vs "+919000011223"), and a
+        // plain string compare there would wipe an already-resolved name back to "resolving".
+        val sameParty = resolvedNumber == previous.phoneNumber ||
+            CallerIdentityCache.isSameNumber(resolvedNumber, previous.phoneNumber)
+        // New party: answer synchronously from the warm cache when possible (CalloraCallScreening
+        // Service/placeCall prewarm it), so the very first state the UI sees is already final.
+        val cached = if (sameParty) null else resolvedNumber?.let(CallerIdentityCache::peek)
 
         Log.d(TAG, "applyCallState: telecom state=$state -> uiState=$uiState number=$resolvedNumber")
         _callState.value = ActiveCallInfo(
             phoneNumber = resolvedNumber,
-            displayName = displayName,
+            displayName = if (sameParty) previous.displayName else cached?.contact?.name,
             state = uiState,
             connectTimestampMillis = connectTimestamp,
-            photoUri = photoUri,
+            photoUri = if (sameParty) previous.photoUri else cached?.contact?.photoUri,
             isIncoming = trackedCallIsIncoming,
-            isResolvingContactName = isResolvingContactName,
+            isResolvingContactName = if (sameParty) {
+                previous.isResolvingContactName
+            } else {
+                resolvedNumber != null && cached == null
+            },
             simAccountLabel = trackedCallSimAccountLabel,
         )
-        resolveDisplayNameIfNeeded(resolvedNumber)
+        if (_callState.value.isResolvingContactName && resolvedNumber != null) resolveDisplayName(resolvedNumber)
         updateActiveCallUiState(uiState, resolvedNumber, connectTimestamp)
     }
 
-    /** Resolves [ActiveCallInfo.displayName] exactly once per phone number, as soon as that
-     * number first shows up (typically while still RINGING/DIALING — well before the call ever
-     * reaches ACTIVE) rather than being tied to any specific [CallUiState]. Always clears
-     * [ActiveCallInfo.isResolvingContactName] once the lookup is settled — whether or not it
-     * actually found a contact — so a number with no saved contact doesn't leave callers (see
-     * OutgoingDialingScreen) stuck showing a "still resolving" placeholder forever. */
-    private fun resolveDisplayNameIfNeeded(phoneNumber: String?) {
-        if (phoneNumber == null) return
-        if (_callState.value.phoneNumber == phoneNumber && !_callState.value.isResolvingContactName) return
+    /** Cache-miss path only — resolves [ActiveCallInfo.displayName] once per number, then settles
+     * it back ON THE MAIN THREAD. The old version wrote _callState from Dispatchers.IO while
+     * applyCallState rebuilt it from a stale `previous` on the main thread, so a telecom state
+     * change landing mid-lookup could overwrite the resolved name with null and re-arm a second
+     * lookup (the name then showed up late, after the number). With every write on one thread
+     * there's no interleaving left. Always clears [ActiveCallInfo.isResolvingContactName], even on
+     * failure, so no surface can stay stuck on its placeholder. */
+    private fun resolveDisplayName(phoneNumber: String) {
+        val key = CallerIdentityCache.key(phoneNumber)
+        if (inFlightLookupKey == key) return
         val context = appContext
         if (context == null) {
-            // No Context to query with yet (shouldn't happen in practice by the time a call can
-            // reach the UI — see attachContext's own doc — but this must still clear the pending
-            // flag rather than leaving it stuck true with no lookup ever going to run.
-            if (_callState.value.phoneNumber == phoneNumber) {
-                _callState.value = _callState.value.copy(isResolvingContactName = false)
-            }
+            settleIdentity(phoneNumber, null)
             return
         }
+        inFlightLookupKey = key
         repositoryScope.launch {
-            val contact = ContactsRepository().getContactByPhoneNumber(context, phoneNumber)
-            // Only apply if still the same number — a fast hang-up + new call could otherwise
-            // land a stale lookup result on top of newer state.
-            if (_callState.value.phoneNumber != phoneNumber) return@launch
-            _callState.value = _callState.value.copy(
+            val contact = try {
+                CallerIdentityCache.resolve(context, phoneNumber)
+            } catch (e: Exception) {
+                Log.w(TAG, "resolveDisplayName: contact lookup failed", e)
+                null
+            }
+            withContext(Dispatchers.Main) {
+                if (inFlightLookupKey == key) inFlightLookupKey = null
+                settleIdentity(phoneNumber, contact)
+            }
+        }
+    }
+
+    private fun settleIdentity(phoneNumber: String, contact: Contact?) {
+        val current = _callState.value
+        // A fast hang-up + new call could otherwise land a stale result on newer state.
+        if (!CallerIdentityCache.isSameNumber(current.phoneNumber, phoneNumber)) return
+        _callState.value = current.copy(
+            displayName = contact?.name,
+            photoUri = contact?.photoUri,
+            isResolvingContactName = false,
+        )
+        val banner = _activeCallUiState.value
+        if (banner != null && CallerIdentityCache.isSameNumber(banner.phoneNumber, phoneNumber)) {
+            _activeCallUiState.value = banner.copy(
                 displayName = contact?.name,
                 photoUri = contact?.photoUri,
                 isResolvingContactName = false,
             )
-            if (_activeCallUiState.value?.phoneNumber == phoneNumber) {
-                _activeCallUiState.value = _activeCallUiState.value?.copy(
-                    displayName = contact?.name,
-                    photoUri = contact?.photoUri,
-                )
-            }
         }
     }
 
@@ -348,6 +399,7 @@ object CallRepository {
                 null
             },
             photoUri = _callState.value.photoUri,
+            isResolvingContactName = _callState.value.isResolvingContactName,
         )
     }
 

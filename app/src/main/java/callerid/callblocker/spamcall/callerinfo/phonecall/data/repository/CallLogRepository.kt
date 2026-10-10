@@ -173,6 +173,73 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
         return entries
     }
 
+    /**
+     * Most recent calls whose number satisfies [matches] (e.g. Spam Center's "is this number
+     * spam-marked"), up to [limit], newest first. Walks the call log in the same bounded
+     * [CALL_HISTORY_SCAN_CHUNK_SIZE] windows as [getCallHistoryForNumber], but gives up after
+     * [maxRowsScanned] rows: matches here are typically rare, and without that cap a few marked
+     * numbers with no calls would mean scanning the entire call log on every visit. Contacts are
+     * only looked up for matching rows.
+     */
+    fun getRecentCallsMatching(
+        context: Context,
+        limit: Int,
+        maxRowsScanned: Int,
+        matches: (phoneNumber: String) -> Boolean,
+    ): List<RecentCallEntry> {
+        if (!CallDataPermissions.hasCallLog(context)) return emptyList()
+
+        val projection = arrayOf(
+            CallLog.Calls._ID,
+            CallLog.Calls.NUMBER,
+            CallLog.Calls.DATE,
+            CallLog.Calls.TYPE,
+        )
+        val entries = mutableListOf<RecentCallEntry>()
+        var offset = 0
+        while (entries.size < limit && offset < maxRowsScanned) {
+            val queryUri = CallLog.Calls.CONTENT_URI.buildUpon()
+                .appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, CALL_HISTORY_SCAN_CHUNK_SIZE.toString())
+                .appendQueryParameter(CallLog.Calls.OFFSET_PARAM_KEY, offset.toString())
+                .build()
+
+            var rawRowCount = 0
+            context.contentResolver.query(
+                queryUri,
+                projection,
+                null,
+                null,
+                "${CallLog.Calls.DATE} DESC",
+            )?.use { cursor ->
+                rawRowCount = cursor.count
+                val idIndex = cursor.getColumnIndex(CallLog.Calls._ID)
+                val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+                val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
+                val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+
+                while (cursor.moveToNext() && entries.size < limit) {
+                    val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
+                    if (number.isNullOrBlank() || number == "-1" || number == "-2" || !matches(number)) continue
+
+                    val contact = contactsRepository.getContactByPhoneNumber(context, number)
+                    entries += RecentCallEntry(
+                        id = if (idIndex >= 0) cursor.getLong(idIndex) else 0L,
+                        name = contact?.name,
+                        phoneNumber = number,
+                        formattedPhoneNumber = formatPhoneNumberForDisplay(number),
+                        timestamp = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L,
+                        callType = mapCallType(if (typeIndex >= 0) cursor.getInt(typeIndex) else -1),
+                        photoUri = contact?.photoUri,
+                    )
+                }
+            }
+
+            if (rawRowCount < CALL_HISTORY_SCAN_CHUNK_SIZE) break
+            offset += rawRowCount
+        }
+        return entries
+    }
+
     private fun mapCallType(type: Int): CallType = when (type) {
         CallLog.Calls.INCOMING_TYPE -> CallType.INCOMING
         CallLog.Calls.OUTGOING_TYPE -> CallType.OUTGOING

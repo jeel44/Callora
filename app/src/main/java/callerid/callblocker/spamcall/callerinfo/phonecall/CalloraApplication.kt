@@ -3,8 +3,13 @@ package callerid.callblocker.spamcall.callerinfo.phonecall
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.MobileAdsInitializer
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.LanguagePreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.OnboardingRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.RecentCallsSnapshotStore
+import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.MISSED_CALL_CHANNEL_ID
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +35,11 @@ class CalloraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch { OnboardingRepository().isOnboardingComplete(this@CalloraApplication) }
+        // Same idea for Home's saved recent-calls snapshot: the disk read starts at process launch
+        // (off the main thread) instead of at HomeViewModel creation, so on a cold start — ~2s
+        // before Home's first frame on a mid-range device — the rows are already in memory and
+        // Home paints them on its first frame instead of an empty RECENT section.
+        RecentCallsSnapshotStore.preload(this)
         applyPersistedLanguage()
         // No existing crash-reporting/analytics consent toggle exists anywhere in this app (see
         // Settings) to defer to, so this just uses Crashlytics' own default (collection on).
@@ -38,7 +48,23 @@ class CalloraApplication : Application() {
         // default. Left enabled for debug builds too — Settings' debug-only test-crash trigger
         // (see SettingsScreen.kt) needs a report to actually reach the Crashlytics console.
         FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        // Same implicit-init story as Crashlytics above — no FirebaseApp.initializeApp() needed.
+        // AnalyticsHelper just gives the rest of the app a Context-free way to reach this instance.
+        AnalyticsHelper.initialize(this)
+        if (BuildConfig.DEBUG) {
+            // Verification-only: confirms the Analytics pipeline is wired up end to end. Not a
+            // real product event — never fires in release builds. Real events (set_default_dialer,
+            // call-completed, spam-block, etc.) come later.
+            AnalyticsHelper.logEvent("app_analytics_initialized")
+        }
         createMissedCallNotificationChannel()
+        // Ads: Remote Config fetch + MobileAds init both start here, fully async (MobileAds on
+        // applicationScope's Dispatchers.Default per Google's off-main-thread guidance), so
+        // neither delays startup. AppOpenAdManager waits on both before it loads anything, and is
+        // a no-op unless Remote Config's ad_app_open_enabled is true.
+        RemoteConfigManager.initialize()
+        MobileAdsInitializer.initialize(this, applicationScope)
+        AppOpenAdManager.initialize(this)
     }
 
     // Unlike the OnboardingRepository prewarm above (deliberately fire-and-forget — a few ms of

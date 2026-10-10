@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -160,69 +163,76 @@ fun AllContactsScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { AllContactsTopBar(onBack = onBack) },
+        // Header lives in the content Column below, not the topBar slot: see HomeScreen's Scaffold for
+        // why (topBar-height-derived content padding goes stale on a cold-start inset change).
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (uiState.hasContactsPermission) {
-                AllContactsSearchField(
-                    query = queryField,
-                    onQueryChange = { newValue ->
-                        queryField = newValue
-                        viewModel.onQueryChange(newValue.text)
-                    },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
-            }
-
-            val refreshState = lazyPagingItems.loadState.refresh
-            when {
-                !uiState.hasContactsPermission -> {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        PermissionPromptCard(
-                            message = stringResource(R.string.contacts_permission_message),
-                            onGrantClick = { contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
+        Column(modifier = Modifier.fillMaxSize()) {
+            AllContactsTopBar(onBack = onBack)
+            Box(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                ) {
+                    if (uiState.hasContactsPermission) {
+                        AllContactsSearchField(
+                            query = queryField,
+                            onQueryChange = { newValue ->
+                                queryField = newValue
+                                viewModel.onQueryChange(newValue.text)
+                            },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                         )
                     }
-                }
-                // First page of a (re)load still in flight — mirrors the old isLoading spinner.
-                // Note this also fires on every search-query change, since a new query means a
-                // brand new PagingSource/Pager (filtering now happens at the query level, not as
-                // an in-memory transform on top of an already-loaded list — see
-                // AllContactsViewModel.pagedContacts) — so unlike the pre-Paging in-memory filter,
-                // changing the search text can briefly show this spinner instead of keeping the
-                // previous results on screen. Accepted tradeoff: keeping the old list visible
-                // during a query change would need materializing/holding a second full result
-                // set, which defeats the point of paginating in the first place.
-                refreshState is LoadState.Loading && lazyPagingItems.itemCount == 0 -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+
+                    val refreshState = lazyPagingItems.loadState.refresh
+                    when {
+                        !uiState.hasContactsPermission -> {
+                            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                PermissionPromptCard(
+                                    message = stringResource(R.string.contacts_permission_message),
+                                    onGrantClick = { contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS) },
+                                )
+                            }
+                        }
+                        // First page of a (re)load still in flight — mirrors the old isLoading spinner.
+                        // Note this also fires on every search-query change, since a new query means a
+                        // brand new PagingSource/Pager (filtering now happens at the query level, not as
+                        // an in-memory transform on top of an already-loaded list — see
+                        // AllContactsViewModel.pagedContacts) — so unlike the pre-Paging in-memory filter,
+                        // changing the search text can briefly show this spinner instead of keeping the
+                        // previous results on screen. Accepted tradeoff: keeping the old list visible
+                        // during a query change would need materializing/holding a second full result
+                        // set, which defeats the point of paginating in the first place.
+                        refreshState is LoadState.Loading && lazyPagingItems.itemCount == 0 -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        refreshState is LoadState.Error && lazyPagingItems.itemCount == 0 -> {
+                            AllContactsEmptyState(message = stringResource(R.string.contacts_error_load_failed))
+                        }
+                        lazyPagingItems.itemCount == 0 -> {
+                            AllContactsEmptyState(
+                                message = if (uiState.isSearching) {
+                                    stringResource(R.string.contacts_no_matches, uiState.query)
+                                } else {
+                                    stringResource(R.string.contacts_none_found)
+                                },
+                            )
+                        }
+                        else -> {
+                            AllContactsList(
+                                lazyPagingItems = lazyPagingItems,
+                                letterIndices = uiState.letterIndices,
+                                isSearching = uiState.isSearching,
+                                onOpenContactDetail = onOpenContactDetail,
+                                onCall = onCall,
+                            )
+                        }
                     }
-                }
-                refreshState is LoadState.Error && lazyPagingItems.itemCount == 0 -> {
-                    AllContactsEmptyState(message = stringResource(R.string.contacts_error_load_failed))
-                }
-                lazyPagingItems.itemCount == 0 -> {
-                    AllContactsEmptyState(
-                        message = if (uiState.isSearching) {
-                            stringResource(R.string.contacts_no_matches, uiState.query)
-                        } else {
-                            stringResource(R.string.contacts_none_found)
-                        },
-                    )
-                }
-                else -> {
-                    AllContactsList(
-                        lazyPagingItems = lazyPagingItems,
-                        letterIndices = uiState.letterIndices,
-                        isSearching = uiState.isSearching,
-                        onOpenContactDetail = onOpenContactDetail,
-                        onCall = onCall,
-                    )
                 }
             }
         }

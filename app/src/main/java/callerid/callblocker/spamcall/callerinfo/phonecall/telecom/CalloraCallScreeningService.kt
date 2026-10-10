@@ -2,7 +2,9 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.telecom
 
 import android.telecom.Call
 import android.telecom.CallScreeningService
+import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.BlockedNumbersRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallerIdentityCache
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,9 +37,22 @@ class CalloraCallScreeningService : CallScreeningService() {
             respondToCall(callDetails, CallResponse.Builder().build())
             return
         }
+        // The system screens a call BEFORE handing it to InCallServiceImpl.onCallAdded, so this is
+        // the earliest moment the number is known — warming the contact lookup here (in parallel
+        // with the block/spam checks) usually lets CallRepository answer synchronously from
+        // CallerIdentityCache when the call is added, so Incoming Call paints the final identity
+        // on its first frame instead of a placeholder.
+        CallerIdentityCache.prewarm(applicationContext, number)
         serviceScope.launch {
             val shouldReject = blockedNumbersRepository.isNumberBlocked(applicationContext, number) ||
                 spamMarkRepository.isMarkedAsSpam(applicationContext, number)
+            if (shouldReject) {
+                // Only real blocks — every allowed call also reaches here but shouldReject is
+                // false for those, so this can't fire on every screened call, only actual ones.
+                // No distinct spam-reason/source field exists in this check (it's a plain OR of
+                // the block list and the local spam-mark list) to attach as a param.
+                AnalyticsHelper.logEvent("spam_blocked")
+            }
             val response = CallResponse.Builder()
                 .setDisallowCall(shouldReject)
                 .setRejectCall(shouldReject)
