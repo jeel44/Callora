@@ -16,4 +16,10 @@
          flashing the unrelated default AppCompat background color. -->
     <color name="window_background_light">#FFE7EDF3</color>
     <color name="window_background_dark">#FF0E1622</color>
+
+    <!-- Theme.Callora.Starting's splash background. The starting window is drawn before any app
+         code runs, so it can only follow the system night mode — values-night overrides this
+         with window_background_dark, and CalloraApplication seeds ThemeState from that same
+         system setting so the first Compose frame lands on the matching canvas. -->
+    <color name="splash_background">@color/window_background_light</color>
 </resources>

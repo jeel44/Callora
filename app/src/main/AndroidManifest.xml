@@ -34,7 +34,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.Callora"
+            android:theme="@style/Theme.Callora.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

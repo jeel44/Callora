@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">Callora</string>
+    <string name="app_name">Phone</string>
 
     <!-- Onboarding -->
     <string name="onboarding_1_headline">누구의 전화인지 바로 확인하세요</string>
-    <string name="onboarding_1_subtitle">Callora가 실시간으로 수신 전화를 식별해 주므로 누구인지 더 이상 추측할 필요가 없습니다.</string>
+    <string name="onboarding_1_subtitle">Phone이 실시간으로 수신 전화를 식별해 주므로 누구인지 더 이상 추측할 필요가 없습니다.</string>
     <string name="onboarding_2_headline">벨이 울리기 전에 스팸을 차단하세요</string>
-    <string name="onboarding_2_subtitle">Callora가 자동으로 로보콜과 알려진 스팸 번호를 걸러내어 휴대폰을 조용하게 유지합니다.</string>
+    <string name="onboarding_2_subtitle">Phone이 자동으로 로보콜과 알려진 스팸 번호를 걸러내어 휴대폰을 조용하게 유지합니다.</string>
     <string name="onboarding_3_headline">내 데이터는 오직 나만의 것입니다</string>
     <string name="onboarding_3_subtitle">발신자 조회는 연락처나 통화 기록을 누구와도 공유하지 않고 이루어집니다.</string>
     <string name="onboarding_button_next">다음</string>
@@ -190,7 +190,7 @@
     <string name="blocked_list_status_blocked">차단됨</string>
     <string name="blocked_list_unblock_content_description">%1$s 차단 해제</string>
     <string name="blocked_list_empty">차단된 번호가 없습니다</string>
-    <string name="blocked_list_unavailable_message">차단된 번호를 관리하려면 Callora를 기본 발신자 표시 앱으로 설정해야 합니다</string>
+    <string name="blocked_list_unavailable_message">차단된 번호를 관리하려면 Phone을 기본 발신자 표시 앱으로 설정해야 합니다</string>
     <string name="blocked_list_set_as_default">기본값으로 설정</string>
 
     <!-- Block confirm screen -->
@@ -229,10 +229,10 @@
     <string name="settings_section_support">지원</string>
     <string name="settings_row_privacy_policy">개인정보 처리방침</string>
     <string name="settings_row_help_feedback">도움말 및 피드백</string>
-    <string name="settings_feedback_email_subject">Callora 피드백</string>
+    <string name="settings_feedback_email_subject">Phone 피드백</string>
     <string name="settings_row_share_app">앱 공유</string>
-    <string name="settings_share_text">발신자 표시 및 스팸 차단 앱 Callora를 확인해 보세요: %1$s</string>
-    <string name="settings_share_chooser_title">Callora 공유</string>
+    <string name="settings_share_text">발신자 표시 및 스팸 차단 앱 Phone을 확인해 보세요: %1$s</string>
+    <string name="settings_share_chooser_title">Phone 공유</string>
     <string name="settings_row_rate_us">평가하기</string>
     <string name="settings_profile_fallback_name">내 프로필</string>
 
@@ -269,7 +269,7 @@
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">통화 화면이 이렇게 표시됩니다</string>
-    <string name="setdefault_card_subtitle">Callora를 기본 전화 앱으로 설정하여 발신자를 자동으로 식별하고 스팸을 차단하세요.</string>
+    <string name="setdefault_card_subtitle">Phone을 기본 전화 앱으로 설정하여 발신자를 자동으로 식별하고 스팸을 차단하세요.</string>
     <string name="setdefault_feature_realtime_id">실시간 발신자 식별</string>
     <string name="setdefault_feature_spam_blocked">커뮤니티에서 신고한 스팸 차단</string>
     <string name="setdefault_feature_keep_contacts">기존 연락처를 모두 유지</string>

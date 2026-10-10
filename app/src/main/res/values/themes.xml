@@ -14,6 +14,19 @@
         <item name="android:windowBackground">@color/window_background_light</item>
     </style>
 
+    <!-- MainActivity's manifest theme, i.e. what the system paints as the cold-start starting
+         window before any app code runs. Without it that window was Theme.Callora's plain
+         windowBackground — a blank light canvas for the whole process start (~2-3s on a
+         mid-range device), even with the system in dark mode. core-splashscreen backports the
+         Android 12 splash to API 23+: theme-canvas background (light/dark via values-night) plus
+         the launcher icon. installSplashScreen() in MainActivity swaps to postSplashScreenTheme
+         and holds the splash until CalloraNavHost has resolved its start destination. -->
+    <style name="Theme.Callora.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Callora</item>
+    </style>
+
     <!-- Applied via MainActivity.setTheme() before super.onCreate() whenever ThemeState.isDarkMode
          is true (and this isn't an incoming-call cold start) — swaps android:windowBackground to
          match ui/theme/Color.kt's DarkCanvas instead of Theme.Callora's light one above, so the

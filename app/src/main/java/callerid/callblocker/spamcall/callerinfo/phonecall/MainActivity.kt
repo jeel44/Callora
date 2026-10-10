@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
@@ -42,6 +43,9 @@ class MainActivity : AppCompatActivity() {
     // Intent.ACTION_CALL directly instead of going through that gate.
     private var pendingCallPhoneNumber by mutableStateOf<String?>(null)
 
+    // Read by the splash screen's keep-on-screen condition on every pre-draw pass (main thread).
+    private var isStartDestinationResolved = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val extrasDump = intent.extras?.keySet()?.joinToString { key -> "$key=${intent.extras?.get(key)}" }
         Log.i(
@@ -60,6 +64,17 @@ class MainActivity : AppCompatActivity() {
         // Incoming-call cold starts no longer get their own dark window (Theme_Callora_IncomingCall):
         // the call screens now paint the theme's own canvas, so the regular light/dark window
         // background is already the matching one and avoids a dark flash in light mode.
+        // installSplashScreen() swaps Theme.Callora.Starting (the manifest theme the cold-start
+        // splash was drawn from) for its postSplashScreenTheme, Theme.Callora — so it must come
+        // before the dark-mode setTheme() below, which would otherwise be overwritten. A no-op
+        // theme-wise for IncomingCallActivityAlias launches, whose theme has no splash attrs.
+        val splashScreen = installSplashScreen()
+        // Hold the splash until CalloraNavHost has resolved its start destination, so the blank
+        // placeholder Surface it shows meanwhile never reaches the screen. Not for incoming calls:
+        // nothing may delay the call UI's first frame.
+        if (!intent.getBooleanExtra(EXTRA_INCOMING_CALL, false)) {
+            splashScreen.setKeepOnScreenCondition { !isStartDestinationResolved }
+        }
         if (ThemeState.isDarkMode) {
             Log.i(DIAG_TAG, "onCreate: ThemeState.isDarkMode true, calling setTheme(Theme_Callora_Dark) BEFORE super.onCreate()")
             setTheme(R.style.Theme_Callora_Dark)
@@ -85,6 +100,7 @@ class MainActivity : AppCompatActivity() {
                         onDeepLinkConsumed = { pendingDeepLinkRoute = null },
                         pendingCallPhoneNumber = pendingCallPhoneNumber,
                         onCallConsumed = { pendingCallPhoneNumber = null },
+                        onStartDestinationResolved = { isStartDestinationResolved = true },
                     )
                 }
             }

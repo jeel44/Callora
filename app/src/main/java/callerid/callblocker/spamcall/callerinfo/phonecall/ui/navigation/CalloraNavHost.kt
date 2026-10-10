@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -129,6 +130,7 @@ fun CalloraNavHost(
     onDeepLinkConsumed: () -> Unit = {},
     pendingCallPhoneNumber: String? = null,
     onCallConsumed: () -> Unit = {},
+    onStartDestinationResolved: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -187,6 +189,9 @@ fun CalloraNavHost(
         ) {}
         return
     }
+    // Releases MainActivity's splash keep-on-screen condition — runs after this composition is
+    // committed, so the first frame drawn once the splash lets go is already the real NavHost.
+    SideEffect { onStartDestinationResolved() }
 
     CalloraNavHostContent(
         startDestination = resolvedStartDestination,
