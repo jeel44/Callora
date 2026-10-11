@@ -119,7 +119,16 @@ object CallRepository {
      * Set by InCallServiceImpl.onCreate() so the post-call popup Activity can be launched from a
      * real Service context; deliberately a single nullable callback, not a Flow/listener list —
      * only one thing ever needs this. Doesn't affect [lastCallSummary]/[callState] at all. */
-    var onCallEnded: ((summary: CallSummary, isIncoming: Boolean, endedAtMillis: Long) -> Unit)? = null
+    var onCallEnded: ((summary: CallSummary, isIncoming: Boolean, endedAtMillis: Long, suppressPopup: Boolean) -> Unit)? = null
+
+    // Set by [rejectForSmsCompose] — the post-call popup would otherwise land on top of the SMS
+    // composer that Incoming Call's "write your own" reply opens right as the call ends.
+    private var suppressPostCallPopup: Boolean = false
+
+    // Telecom's own quick-reply texts for the ringing call (Call.getCannedTextResponses), loaded
+    // asynchronously by the system — only for calls with CAPABILITY_RESPOND_VIA_TEXT.
+    private val _quickReplies = MutableStateFlow<List<String>>(emptyList())
+    val quickReplies: StateFlow<List<String>> = _quickReplies.asStateFlow()
 
     private val _activeCallUiState = MutableStateFlow<ActiveCallUiState?>(null)
     val activeCallUiState: StateFlow<ActiveCallUiState?> = _activeCallUiState.asStateFlow()
@@ -146,6 +155,10 @@ object CallRepository {
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             applyCallState(call, state)
+        }
+
+        override fun onCannedTextResponsesLoaded(call: Call, cannedTextResponses: MutableList<String>?) {
+            if (call === trackedCall) _quickReplies.value = cannedTextResponses.orEmpty()
         }
     }
 
@@ -206,6 +219,8 @@ object CallRepository {
         trackedCall = null
         trackedCallIsIncoming = false
         trackedCallSimAccountLabel = null
+        suppressPostCallPopup = false
+        _quickReplies.value = emptyList()
         _callState.value = emptyState()
         _activeCallUiState.value = null
     }
@@ -237,6 +252,8 @@ object CallRepository {
         // appContext is already set by this point — attachContext runs synchronously in
         // InCallServiceImpl.onCreate(), strictly before the system can ever deliver a Call here.
         trackedCallSimAccountLabel = appContext?.let { resolveAccountLabel(it, call.details?.accountHandle) }
+        suppressPostCallPopup = false
+        _quickReplies.value = call.cannedTextResponses.orEmpty()
         call.registerCallback(callback)
         applyCallState(call, call.state)
     }
@@ -258,6 +275,9 @@ object CallRepository {
 
         call.unregisterCallback(callback)
         trackedCall = null
+        _quickReplies.value = emptyList()
+        val suppressPopup = suppressPostCallPopup
+        suppressPostCallPopup = false
         // Deliberately NOT resetting _callState here. onStateChanged already set it to
         // DISCONNECTED just before this runs, and MutableStateFlow only ever holds the latest
         // value — if this immediately overwrote it back to NONE in the same synchronous call
@@ -266,7 +286,7 @@ object CallRepository {
         // call screen. DISCONNECTED is left in place as the terminal state until [reset] is
         // called for the next outgoing call.
 
-        onCallEnded?.invoke(summary, trackedCallIsIncoming, System.currentTimeMillis())
+        onCallEnded?.invoke(summary, trackedCallIsIncoming, System.currentTimeMillis(), suppressPopup)
     }
 
     /** Real Call.disconnect() — used by Active Call's End Call button (and Outgoing Dialing's
@@ -283,6 +303,26 @@ object CallRepository {
     /** Real Call.reject() — used by the Incoming Call screen's Decline button. */
     fun reject() {
         trackedCall?.reject(false, null)
+    }
+
+    /** Whether Telecom itself can decline this call with an SMS ([rejectWithMessage]) — false
+     * when the carrier/network doesn't support it or there's no number to reply to. */
+    fun canRespondViaText(): Boolean =
+        trackedCall?.details?.can(Call.Details.CAPABILITY_RESPOND_VIA_TEXT) == true
+
+    /** Real Call.reject(true, text): Telecom declines the call and sends [text] through the
+     * default SMS app's respond-via-message service — no SEND_SMS permission and no unlock needed,
+     * which is why Incoming Call's quick replies and "Urgent?" go through here. */
+    fun rejectWithMessage(text: String) {
+        trackedCall?.reject(true, text)
+    }
+
+    /** Plain reject, minus the post-call popup — for when the caller is about to open the SMS
+     * composer itself (see [suppressPostCallPopup]). */
+    fun rejectForSmsCompose() {
+        val call = trackedCall ?: return
+        suppressPostCallPopup = true
+        call.reject(false, null)
     }
 
     private fun applyCallState(call: Call, state: Int) {

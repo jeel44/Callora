@@ -18,16 +18,17 @@
     <string name="permission_not_now">Ikke nå</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_home">Hjem</string>
+    <string name="nav_home">Nylige</string>
     <string name="nav_contacts">Kontakter</string>
-    <string name="nav_spam">Spam</string>
     <string name="nav_settings">Innstillinger</string>
 
     <!-- Home screen -->
     <string name="home_dialpad_content_description">Ringetastatur</string>
     <string name="home_notifications_content_description">Varsler</string>
     <string name="home_recent_section_title">NYLIGE</string>
-    <string name="home_title">Telefon</string>
+    <string name="home_title">Nylige</string>
+    <string name="home_filter_content_description">Filtrer</string>
+    <string name="home_search_content_description">Søk</string>
     <string name="home_call_log_permission_message">Gi tilgang til kontakter og anropslogg for å se nylige anrop.</string>
     <string name="home_no_recent_calls">Ingen nylige anrop ennå.</string>
     <string name="home_call_log_permission_heading">Hold oversikt over alle anrop</string>
@@ -146,6 +147,7 @@
 
     <!-- Contact detail screen -->
     <string name="contact_detail_more_content_description">Mer</string>
+    <string name="call_log_contact_info_content_description">Kontaktinfo</string>
     <string name="contact_detail_copy_name">Kopier navn</string>
     <string name="contact_detail_copy_number">Kopier nummer</string>
     <string name="contact_detail_unmark_spam">Fjern spam-merking</string>
@@ -222,12 +224,13 @@
     <!-- Settings screen -->
     <string name="settings_title">Innstillinger</string>
     <string name="settings_section_protection">Beskyttelse</string>
-    <string name="settings_row_caller_id_spam">Anrops-ID og spam</string>
     <string name="settings_row_blocked_numbers">Blokkerte numre</string>
     <string name="settings_section_preferences">Preferanser</string>
     <string name="settings_row_dark_theme">Mørkt tema</string>
     <string name="settings_row_language">Språk</string>
     <string name="settings_row_notifications">Varsler</string>
+    <string name="settings_row_after_call">Skjerm etter samtale</string>
+    <string name="settings_row_after_call_subtitle">Vis et sammendrag når en samtale avsluttes</string>
     <string name="settings_section_support">Støtte</string>
     <string name="settings_row_privacy_policy">Personvernerklæring</string>
     <string name="settings_row_help_feedback">Hjelp og tilbakemelding</string>
@@ -322,6 +325,9 @@
     <string name="contact_detail_clip_label_contact">Kontakt</string>
     <string name="call_app_label">Telefon</string>
     <string name="incoming_urgent_label">Haster?</string>
+    <string name="incoming_urgent_reply_text">Jeg kan ikke svare akkurat nå. Hvis det haster, ring igjen.</string>
+    <string name="incoming_quick_reply_title">Svar med en melding</string>
+    <string name="incoming_quick_reply_write_own">Skriv din egen…</string>
     <string name="active_call_video_call_label">Videosamtale</string>
     <string name="active_call_hold_label">Sett på vent</string>
     <string name="call_more_sheet_title">Mer</string>

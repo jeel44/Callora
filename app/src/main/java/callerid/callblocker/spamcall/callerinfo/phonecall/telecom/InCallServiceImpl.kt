@@ -23,6 +23,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.TaskStackBuilder
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.AfterCallPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.callended.CallEndedActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 import coil.imageLoader
@@ -61,6 +62,12 @@ class InCallServiceImpl : InCallService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    // Settings' "After call screen" toggle, mirrored here so onCallEnded can decide synchronously
+    // (the system may unbind this service right after the last call is removed, so a suspending
+    // DataStore read there could lose the race). Defaults on until the first emission lands.
+    @Volatile
+    private var afterCallScreenEnabled = true
+
     override fun onCreate() {
         super.onCreate()
         Log.i(DIAG_TAG, "onCreate: system is instantiating InCallServiceImpl")
@@ -72,8 +79,13 @@ class InCallServiceImpl : InCallService() {
         // missed-call-notification hook (see MissedCallNotifier.notifyIfMissed's own doc for how
         // it narrows this down to genuinely missed calls, and why a screening-service-blocked
         // call never reaches this callback at all).
-        CallRepository.onCallEnded = { summary, isIncoming, endedAtMillis ->
-            CallEndedActivity.launch(applicationContext, summary, isIncoming, endedAtMillis)
+        serviceScope.launch {
+            AfterCallPreferencesRepository().afterCallScreenEnabled(applicationContext).collect {
+                afterCallScreenEnabled = it
+            }
+        }
+        CallRepository.onCallEnded = { summary, isIncoming, endedAtMillis, suppressPopup ->
+            if (!suppressPopup && afterCallScreenEnabled) CallEndedActivity.launch(applicationContext, summary, isIncoming, endedAtMillis)
             serviceScope.launch {
                 MissedCallNotifier.notifyIfMissed(applicationContext, summary, isIncoming, endedAtMillis)
             }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,15 +22,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.RemoveModerator
+import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.Icon
@@ -44,9 +49,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -74,6 +81,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val languageDisplayName by viewModel.languageDisplayName.collectAsState()
+    val spamMarkedCount by viewModel.spamMarkedCount.collectAsState()
+    val afterCallScreenEnabled by viewModel.afterCallScreenEnabled.collectAsState()
     val context = LocalContext.current
 
     Scaffold(
@@ -87,7 +96,6 @@ fun SettingsScreen(
                 selected = BottomNavDestination.SETTINGS,
                 onOpenHome = onOpenHome,
                 onOpenContacts = onOpenAllContacts,
-                onOpenSpamCenter = onOpenSpamCenter,
                 onOpenSettings = {},
             )
         },
@@ -104,127 +112,154 @@ fun SettingsScreen(
                 ) {
                     item { SectionLabel(text = stringResource(R.string.settings_section_protection)) }
                     item {
-                        SettingsRow(
-                            icon = Icons.Filled.Call,
-                            title = stringResource(R.string.settings_row_caller_id_spam),
-                            onClick = onOpenSpamCenter,
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.Filled.Block,
-                            title = stringResource(R.string.settings_row_blocked_numbers),
-                            onClick = onOpenBlockedList,
-                        )
+                        SettingsGroup {
+                            SettingsRow(
+                                icon = Icons.Filled.RemoveModerator,
+                                iconTint = MaterialTheme.extendedColors.spamTag,
+                                iconContainer = MaterialTheme.extendedColors.spamTagContainer,
+                                title = stringResource(R.string.spam_center_title),
+                                onClick = onOpenSpamCenter,
+                                trailing = {
+                                    if (spamMarkedCount > 0) {
+                                        CountBadge(count = spamMarkedCount)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                    ChevronIcon()
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Filled.Block,
+                                title = stringResource(R.string.settings_row_blocked_numbers),
+                                onClick = onOpenBlockedList,
+                            )
+                        }
                     }
 
                     item { SectionLabel(text = stringResource(R.string.settings_section_preferences)) }
                     item {
-                        SettingsRow(
-                            icon = Icons.Filled.DarkMode,
-                            title = stringResource(R.string.settings_row_dark_theme),
-                            trailing = {
-                                Switch(
-                                    checked = ThemeState.isDarkMode,
-                                    onCheckedChange = { ThemeState.isDarkMode = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                    ),
-                                )
-                            },
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.Filled.Translate,
-                            title = stringResource(R.string.settings_row_language),
-                            subtitle = languageDisplayName,
-                            onClick = onOpenLanguageSelect,
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.Filled.Notifications,
-                            title = stringResource(R.string.settings_row_notifications),
-                            onClick = onOpenNotifications,
-                        )
+                        SettingsGroup {
+                            SettingsRow(
+                                icon = Icons.Filled.DarkMode,
+                                title = stringResource(R.string.settings_row_dark_theme),
+                                trailing = {
+                                    Switch(
+                                        checked = ThemeState.isDarkMode,
+                                        onCheckedChange = { ThemeState.isDarkMode = it },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        ),
+                                    )
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Outlined.Smartphone,
+                                title = stringResource(R.string.settings_row_after_call),
+                                subtitle = stringResource(R.string.settings_row_after_call_subtitle),
+                                trailing = {
+                                    Switch(
+                                        checked = afterCallScreenEnabled,
+                                        onCheckedChange = viewModel::setAfterCallScreenEnabled,
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        ),
+                                    )
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Filled.Translate,
+                                title = stringResource(R.string.settings_row_language),
+                                subtitle = languageDisplayName,
+                                onClick = onOpenLanguageSelect,
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Filled.Notifications,
+                                title = stringResource(R.string.settings_row_notifications),
+                                onClick = onOpenNotifications,
+                            )
+                        }
                     }
 
                     item { SectionLabel(text = stringResource(R.string.settings_section_support)) }
                     item {
-                        SettingsRow(
-                            icon = Icons.Filled.PrivacyTip,
-                            title = stringResource(R.string.settings_row_privacy_policy),
-                            onClick = {
-                                try {
+                        SettingsGroup {
+                            SettingsRow(
+                                icon = Icons.Filled.PrivacyTip,
+                                title = stringResource(R.string.settings_row_privacy_policy),
+                                onClick = {
+                                    try {
+                                        context.startActivity(
+                                            Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("https://sites.google.com/view/caller-id-spam-detection/home"),
+                                            ),
+                                        )
+                                    } catch (e: ActivityNotFoundException) {
+                                        // No browser available — fail silently.
+                                    }
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.AutoMirrored.Filled.Help,
+                                title = stringResource(R.string.settings_row_help_feedback),
+                                onClick = {
+                                    try {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:tarangsutariya3440@gmail.com")).apply {
+                                                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.settings_feedback_email_subject))
+                                            },
+                                        )
+                                    } catch (e: ActivityNotFoundException) {
+                                        // No email client available — fail silently.
+                                    }
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Filled.Share,
+                                title = stringResource(R.string.settings_row_share_app),
+                                onClick = {
+                                    val playStoreUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, context.getString(R.string.settings_share_text, playStoreUrl))
+                                    }
                                     context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse("https://sites.google.com/view/caller-id-spam-detection/home"),
-                                        ),
+                                        Intent.createChooser(shareIntent, context.getString(R.string.settings_share_chooser_title)),
                                     )
-                                } catch (e: ActivityNotFoundException) {
-                                    // No browser available — fail silently.
-                                }
-                            },
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.AutoMirrored.Filled.Help,
-                            title = stringResource(R.string.settings_row_help_feedback),
-                            onClick = {
-                                try {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:tarangsutariya3440@gmail.com")).apply {
-                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.settings_feedback_email_subject))
-                                        },
-                                    )
-                                } catch (e: ActivityNotFoundException) {
-                                    // No email client available — fail silently.
-                                }
-                            },
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.Filled.Share,
-                            title = stringResource(R.string.settings_row_share_app),
-                            onClick = {
-                                val playStoreUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, context.getString(R.string.settings_share_text, playStoreUrl))
-                                }
-                                context.startActivity(
-                                    Intent.createChooser(shareIntent, context.getString(R.string.settings_share_chooser_title)),
-                                )
-                            },
-                        )
-                    }
-                    item {
-                        SettingsRow(
-                            icon = Icons.Filled.Star,
-                            title = stringResource(R.string.settings_row_rate_us),
-                            onClick = {
-                                val packageName = context.packageName
-                                try {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
-                                            setPackage("com.android.vending")
-                                        },
-                                    )
-                                } catch (e: ActivityNotFoundException) {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse("https://play.google.com/store/apps/details?id=$packageName"),
-                                        ),
-                                    )
-                                }
-                            },
-                        )
+                                },
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Filled.Star,
+                                iconTint = MaterialTheme.extendedColors.rating,
+                                iconContainer = MaterialTheme.extendedColors.ratingContainer,
+                                title = stringResource(R.string.settings_row_rate_us),
+                                onClick = {
+                                    val packageName = context.packageName
+                                    try {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
+                                                setPackage("com.android.vending")
+                                            },
+                                        )
+                                    } catch (e: ActivityNotFoundException) {
+                                        context.startActivity(
+                                            Intent(
+                                                Intent.ACTION_VIEW,
+                                                Uri.parse("https://play.google.com/store/apps/details?id=$packageName"),
+                                            ),
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
 
                     item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -254,10 +289,37 @@ private fun SettingsTopBar() {
 @Composable
 private fun SectionLabel(text: String) {
     Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.extendedColors.onSurfaceFaint,
-        modifier = Modifier.padding(top = 8.dp),
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelLarge.copy(
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.3.sp,
+        ),
+        color = MaterialTheme.extendedColors.mutedText,
+        modifier = Modifier.padding(top = 8.dp, start = 4.dp),
+    )
+}
+
+/** One rounded card per section; rows inside are separated by [SettingsDivider]. */
+@Composable
+private fun SettingsGroup(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ListItemShape)
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(MaterialTheme.extendedColors.listDivider),
     )
 }
 
@@ -266,45 +328,77 @@ private fun SettingsRow(
     icon: ImageVector,
     title: String,
     subtitle: String? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    iconContainer: Color = MaterialTheme.extendedColors.accentContainer,
     onClick: (() -> Unit)? = null,
-    trailing: @Composable () -> Unit = {
-        Icon(
-            imageVector = Icons.Filled.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.extendedColors.onSurfaceFaint,
-        )
-    },
+    trailing: @Composable () -> Unit = { ChevronIcon() },
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(ListItemShape)
-            .background(MaterialTheme.colorScheme.surface)
             .let { if (onClick != null) it.clickable(onClick = onClick) else it }
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(22.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(iconContainer, IconTileShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-                    color = MaterialTheme.extendedColors.onSurfaceFaint,
+                    color = MaterialTheme.extendedColors.mutedText,
                 )
             }
         }
         trailing()
+    }
+}
+
+private val IconTileShape = RoundedCornerShape(12.dp)
+
+@Composable
+private fun ChevronIcon() {
+    Icon(
+        imageVector = Icons.Filled.ChevronRight,
+        contentDescription = null,
+        tint = MaterialTheme.extendedColors.mutedText,
+        modifier = Modifier.size(16.dp),
+    )
+}
+
+/** Pill-shaped count, in the same spam-tag color pair as the Spam Center row's icon tile. */
+@Composable
+private fun CountBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .heightIn(min = 22.dp)
+            .widthIn(min = 22.dp)
+            .background(MaterialTheme.extendedColors.spamTagContainer, CircleShape)
+            .padding(horizontal = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp, fontWeight = FontWeight.Bold),
+            color = MaterialTheme.extendedColors.spamTag,
+        )
     }
 }

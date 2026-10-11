@@ -23,6 +23,7 @@ fun IncomingSpamScreen(
     onDecline: () -> Unit,
     onAnswer: () -> Unit,
     onBlock: () -> Unit,
+    onUrgent: () -> Unit,
     modifier: Modifier = Modifier,
     simAccountLabel: String? = null,
 ) {
@@ -37,6 +38,7 @@ fun IncomingSpamScreen(
         middleButtonIcon = Icons.Filled.Block,
         middleButtonLabel = stringResource(R.string.incoming_block_label),
         onMiddleButtonClick = onBlock,
+        onUrgent = onUrgent,
         onDecline = onDecline,
         onAnswer = onAnswer,
         modifier = modifier,
@@ -55,6 +57,7 @@ private fun IncomingSpamScreenPreview() {
             onDecline = {},
             onAnswer = {},
             onBlock = {},
+            onUrgent = {},
         )
     }
 }

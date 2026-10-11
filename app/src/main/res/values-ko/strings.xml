@@ -18,16 +18,17 @@
     <string name="permission_not_now">나중에</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_home">홈</string>
+    <string name="nav_home">최근 기록</string>
     <string name="nav_contacts">연락처</string>
-    <string name="nav_spam">스팸</string>
     <string name="nav_settings">설정</string>
 
     <!-- Home screen -->
     <string name="home_dialpad_content_description">다이얼패드</string>
     <string name="home_notifications_content_description">알림</string>
     <string name="home_recent_section_title">최근 통화</string>
-    <string name="home_title">전화</string>
+    <string name="home_title">최근 기록</string>
+    <string name="home_filter_content_description">필터</string>
+    <string name="home_search_content_description">검색</string>
     <string name="home_call_log_permission_message">최근 통화를 보려면 연락처 및 통화 기록 접근을 허용하세요.</string>
     <string name="home_no_recent_calls">아직 최근 통화가 없습니다.</string>
     <string name="home_call_log_permission_heading">모든 통화를 기록해 보세요</string>
@@ -145,6 +146,7 @@
 
     <!-- Contact detail screen -->
     <string name="contact_detail_more_content_description">더보기</string>
+    <string name="call_log_contact_info_content_description">연락처 정보</string>
     <string name="contact_detail_copy_name">이름 복사</string>
     <string name="contact_detail_copy_number">번호 복사</string>
     <string name="contact_detail_unmark_spam">스팸 표시 해제</string>
@@ -220,12 +222,13 @@
     <!-- Settings screen -->
     <string name="settings_title">설정</string>
     <string name="settings_section_protection">보호</string>
-    <string name="settings_row_caller_id_spam">발신자 표시 및 스팸</string>
     <string name="settings_row_blocked_numbers">차단된 번호</string>
     <string name="settings_section_preferences">환경설정</string>
     <string name="settings_row_dark_theme">다크 테마</string>
     <string name="settings_row_language">언어</string>
     <string name="settings_row_notifications">알림</string>
+    <string name="settings_row_after_call">통화 후 화면</string>
+    <string name="settings_row_after_call_subtitle">통화가 끝나면 요약 표시</string>
     <string name="settings_section_support">지원</string>
     <string name="settings_row_privacy_policy">개인정보 처리방침</string>
     <string name="settings_row_help_feedback">도움말 및 피드백</string>
@@ -320,6 +323,9 @@
     <string name="contact_detail_clip_label_contact">연락처</string>
     <string name="call_app_label">전화</string>
     <string name="incoming_urgent_label">긴급?</string>
+    <string name="incoming_urgent_reply_text">지금은 전화를 받을 수 없습니다. 급한 일이면 다시 전화해 주세요.</string>
+    <string name="incoming_quick_reply_title">메시지로 답장</string>
+    <string name="incoming_quick_reply_write_own">직접 작성…</string>
     <string name="active_call_video_call_label">영상 통화</string>
     <string name="active_call_hold_label">대기</string>
     <string name="call_more_sheet_title">더보기</string>

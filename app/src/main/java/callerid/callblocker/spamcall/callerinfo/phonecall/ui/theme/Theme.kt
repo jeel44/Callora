@@ -27,6 +27,12 @@ data class CalloraExtendedColors(
     val callMissed: Color,
     val listDivider: Color,
     val mutedText: Color,
+    // Soft tinted containers + their ink (selected nav tab, Settings icon tiles, count badges).
+    val accentContainer: Color,
+    val spamTag: Color,
+    val spamTagContainer: Color,
+    val rating: Color,
+    val ratingContainer: Color,
 )
 
 private val LightExtendedColors = CalloraExtendedColors(
@@ -41,6 +47,11 @@ private val LightExtendedColors = CalloraExtendedColors(
     callMissed = LightCallMissed,
     listDivider = LightListDivider,
     mutedText = LightMutedText,
+    accentContainer = LightAccentContainer,
+    spamTag = LightSpamTag,
+    spamTagContainer = LightSpamTagContainer,
+    rating = LightRating,
+    ratingContainer = LightRatingContainer,
 )
 
 private val DarkExtendedColors = CalloraExtendedColors(
@@ -55,6 +66,11 @@ private val DarkExtendedColors = CalloraExtendedColors(
     callMissed = DarkCallMissed,
     listDivider = DarkListDivider,
     mutedText = DarkMutedText,
+    accentContainer = DarkAccentContainer,
+    spamTag = DarkSpamTag,
+    spamTagContainer = DarkSpamTagContainer,
+    rating = DarkRating,
+    ratingContainer = DarkRatingContainer,
 )
 
 private val LocalCalloraExtendedColors = staticCompositionLocalOf { LightExtendedColors }

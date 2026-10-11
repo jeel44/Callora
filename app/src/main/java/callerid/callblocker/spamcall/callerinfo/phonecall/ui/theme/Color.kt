@@ -42,6 +42,19 @@ val DarkCallMissed = Color(0xFFFF6B65)
 val DarkListDivider = Color(0xFF22262B)
 val DarkMutedText = Color(0xFF9AA3AD)
 
+// Tinted icon tiles / selected states (bottom nav's selected squircle, Settings row icon tiles,
+// Spam Center count badge). Each pair is a soft container plus the ink drawn on it.
+val LightAccentContainer = Color(0xFFE3EFFD)
+val DarkAccentContainer = Color(0xFF1E2A3A)
+val LightSpamTag = Color(0xFFD6447A)
+val LightSpamTagContainer = Color(0xFFFDE7EC)
+val DarkSpamTag = Color(0xFFF28FB0)
+val DarkSpamTagContainer = Color(0xFF3A222B)
+val LightRating = Color(0xFFF2A900)
+val LightRatingContainer = Color(0xFFFFF4D6)
+val DarkRating = Color(0xFFF2C94C)
+val DarkRatingContainer = Color(0xFF3A311A)
+
 // "Set as default" screen — dark hero call-preview tokens. Values specific to this screen's
 // mock UI (not reused elsewhere), so they live here rather than overloading the semantic tokens
 // above.

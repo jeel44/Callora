@@ -1,6 +1,5 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
@@ -50,14 +48,11 @@ internal fun IncomingCallLayout(
     middleButtonIcon: ImageVector,
     middleButtonLabel: String,
     onMiddleButtonClick: () -> Unit,
+    onUrgent: () -> Unit,
     onDecline: () -> Unit,
     onAnswer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val urgentLabel = stringResource(R.string.incoming_urgent_label)
-    val urgentUnsupportedText = stringResource(R.string.call_feature_unsupported_toast, urgentLabel)
-
     CallScreenBackground(isSpam = isSpam, modifier = modifier) {
         Column(
             modifier = Modifier
@@ -95,10 +90,10 @@ internal fun IncomingCallLayout(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CallSecondaryPillButton(
                     icon = Icons.Filled.SwapVert,
-                    label = urgentLabel,
-                    // No "urgent call" action exists anywhere in the call stack yet — honest
-                    // toast rather than a silent no-op, like Active Call's merge toast.
-                    onClick = { Toast.makeText(context, urgentUnsupportedText, Toast.LENGTH_SHORT).show() },
+                    label = stringResource(R.string.incoming_urgent_label),
+                    // Declines with a canned "call again if it's urgent" text (wired in
+                    // CalloraNavHost's INCOMING_CALL route).
+                    onClick = onUrgent,
                 )
                 CallSecondaryPillButton(
                     icon = middleButtonIcon,

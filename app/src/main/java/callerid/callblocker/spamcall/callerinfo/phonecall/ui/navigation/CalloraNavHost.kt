@@ -66,6 +66,8 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.home.HomeSc
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall.IncomingCallViewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall.IncomingKnownScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall.IncomingSpamScreen
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall.QuickReplySheet
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.incomingcall.declineAndOpenSmsComposer
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.languageselect.LanguageSelectScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.noresults.NoResultsScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.notifications.NotificationsScreen
@@ -81,6 +83,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.settings.SettingsScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.spamcenter.SpamCenterScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.splash.SplashScreen
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.findActivity
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.launch
 
@@ -505,7 +508,8 @@ private fun CalloraNavHostContent(
             HomeScreen(
                 onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
-                onOpenSpamCenter = { navController.navigate(Routes.SPAM_CENTER) },
+                // TODO: no filter destination/sheet exists yet — wire one up here once designed.
+                onOpenFilter = {},
                 onOpenContactDetail = { phoneNumber ->
                     navController.navigate(Routes.contactDetailRoute(phoneNumber))
                 },
@@ -575,10 +579,14 @@ private fun CalloraNavHostContent(
         }
         composable(Routes.SPAM_CENTER) {
             SpamCenterScreen(
+                // Reached from Settings' Spam Center row now (no longer a bottom-nav tab), so
+                // close returns there rather than jumping to Home.
                 onClose = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.HOME) { inclusive = false }
-                        launchSingleTop = true
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.HOME) { inclusive = false }
+                            launchSingleTop = true
+                        }
                     }
                 },
                 onOpenBlockedList = { navController.navigate(Routes.BLOCKED_LIST) },
@@ -623,6 +631,9 @@ private fun CalloraNavHostContent(
             val viewModel: IncomingCallViewModel = viewModel()
             val callInfo by viewModel.callState.collectAsState()
             val isSpamMarked by viewModel.isSpamMarked.collectAsState()
+            val quickReplies by viewModel.quickReplies.collectAsState()
+            var showQuickReplies by remember { mutableStateOf(false) }
+            val urgentReplyText = stringResource(R.string.incoming_urgent_reply_text)
             val context = LocalContext.current
 
             // Covers the call ending on its own (far end hangs up, network drops it, etc.)
@@ -643,13 +654,30 @@ private fun CalloraNavHostContent(
                 }
             }
 
+            val navigateHome: () -> Unit = {
+                navController.navigate(Routes.HOME) {
+                    popUpTo(Routes.HOME) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
             val onDecline: () -> Unit = {
                 // Real reject, but also navigate unconditionally so the button always works
                 // even if no telecom callback ever arrives (mirrors End Call/Cancel elsewhere).
                 viewModel.reject()
-                navController.navigate(Routes.HOME) {
-                    popUpTo(Routes.HOME) { inclusive = false }
-                    launchSingleTop = true
+                navigateHome()
+            }
+            // Telecom's own decline-with-SMS when the carrier supports it (works while locked, no
+            // SEND_SMS needed); otherwise unlock -> decline -> SMS composer pre-filled with [text].
+            // The composer path navigates nowhere itself: the call's own DISCONNECTED does that.
+            val declineWithText: (String) -> Unit = { text ->
+                val number = callInfo.phoneNumber
+                if (number != null) {
+                    if (viewModel.canReplyViaText()) {
+                        viewModel.replyWithMessage(text)
+                        navigateHome()
+                    } else {
+                        context.findActivity()?.let { declineAndOpenSmsComposer(it, number, text) }
+                    }
                 }
             }
 
@@ -670,6 +698,7 @@ private fun CalloraNavHostContent(
                     onDecline = onDecline,
                     onAnswer = { viewModel.answer() },
                     onBlock = { viewModel.blockCaller() },
+                    onUrgent = { declineWithText(urgentReplyText) },
                 )
             } else {
                 IncomingKnownScreen(
@@ -681,14 +710,24 @@ private fun CalloraNavHostContent(
                     isSavedContact = callInfo.displayName != null,
                     onDecline = onDecline,
                     onAnswer = { viewModel.answer() },
-                    onMessage = {
-                        callInfo.phoneNumber?.let { number ->
-                            context.startActivity(
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number"))
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
+                    onMessage = { if (callInfo.phoneNumber != null) showQuickReplies = true },
+                    onUrgent = { declineWithText(urgentReplyText) },
+                )
+            }
+            if (showQuickReplies) {
+                QuickReplySheet(
+                    replies = if (viewModel.canReplyViaText()) quickReplies else emptyList(),
+                    onReply = { text ->
+                        showQuickReplies = false
+                        declineWithText(text)
                     },
+                    onWriteOwn = {
+                        showQuickReplies = false
+                        val number = callInfo.phoneNumber
+                        val activity = context.findActivity()
+                        if (number != null && activity != null) declineAndOpenSmsComposer(activity, number)
+                    },
+                    onDismissRequest = { showQuickReplies = false },
                 )
             }
         }

@@ -22,16 +22,17 @@
     <string name="sim_picker_subtitle">Choose which SIM to place this call from.</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_home">Home</string>
+    <string name="nav_home">Recent</string>
     <string name="nav_contacts">Contacts</string>
-    <string name="nav_spam">Spam</string>
     <string name="nav_settings">Settings</string>
 
     <!-- Home screen -->
     <string name="home_dialpad_content_description">Dialpad</string>
     <string name="home_notifications_content_description">Notifications</string>
     <string name="home_recent_section_title">RECENT</string>
-    <string name="home_title">Phone</string>
+    <string name="home_title">Recent</string>
+    <string name="home_filter_content_description">Filter</string>
+    <string name="home_search_content_description">Search</string>
     <string name="home_call_log_permission_message">Grant contacts &amp; call log access to see your recent calls.</string>
     <string name="home_no_recent_calls">No recent calls yet.</string>
     <string name="home_call_log_permission_heading">Keep track of every call</string>
@@ -150,6 +151,7 @@
 
     <!-- Contact detail screen -->
     <string name="contact_detail_more_content_description">More</string>
+    <string name="call_log_contact_info_content_description">Contact info</string>
     <string name="contact_detail_copy_name">Copy name</string>
     <string name="contact_detail_copy_number">Copy number</string>
     <string name="contact_detail_unmark_spam">Unmark as spam</string>
@@ -226,12 +228,13 @@
     <!-- Settings screen -->
     <string name="settings_title">Settings</string>
     <string name="settings_section_protection">Protection</string>
-    <string name="settings_row_caller_id_spam">Caller ID &amp; spam</string>
     <string name="settings_row_blocked_numbers">Blocked numbers</string>
     <string name="settings_section_preferences">Preferences</string>
     <string name="settings_row_dark_theme">Dark theme</string>
     <string name="settings_row_language">Language</string>
     <string name="settings_row_notifications">Notifications</string>
+    <string name="settings_row_after_call">After call screen</string>
+    <string name="settings_row_after_call_subtitle">Show a call summary when a call ends</string>
     <string name="settings_section_support">Support</string>
     <string name="settings_row_privacy_policy">Privacy policy</string>
     <string name="settings_row_help_feedback">Help &amp; feedback</string>
@@ -326,6 +329,9 @@
     <string name="contact_detail_clip_label_contact">Contact</string>
     <string name="call_app_label">Phone</string>
     <string name="incoming_urgent_label">Urgent?</string>
+    <string name="incoming_urgent_reply_text">I can\'t answer right now. If it\'s urgent, please call again.</string>
+    <string name="incoming_quick_reply_title">Reply with a message</string>
+    <string name="incoming_quick_reply_write_own">Write your own…</string>
     <string name="active_call_video_call_label">Video call</string>
     <string name="active_call_hold_label">Hold</string>
     <string name="call_more_sheet_title">More</string>

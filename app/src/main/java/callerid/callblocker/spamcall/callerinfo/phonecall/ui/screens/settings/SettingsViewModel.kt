@@ -8,9 +8,11 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.AfterCallPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.DEFAULT_LANGUAGE_TAG
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.LanguagePreferencesRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SupportedLanguages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private val contactsRepository = ContactsRepository()
     private val languagePreferencesRepository = LanguagePreferencesRepository()
+    private val spamMarkRepository = SpamMarkRepository()
+    private val afterCallPreferencesRepository = AfterCallPreferencesRepository()
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -44,6 +48,22 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val languageDisplayName: StateFlow<String> = languagePreferencesRepository.selectedLanguageTag(application)
         .map { tag -> SupportedLanguages.find { it.languageTag == tag }?.displayName ?: defaultLanguageDisplayName }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), defaultLanguageDisplayName)
+
+    // Spam Center row's badge: how many numbers this device has marked as spam — the same
+    // SpamMarkRepository data Spam Center builds its spam-call list from. Observed live so a
+    // mark/unmark made in Spam Center shows up on returning here.
+    val spamMarkedCount: StateFlow<Int> = spamMarkRepository.spamMarkedNumbersFlow(application)
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val afterCallScreenEnabled: StateFlow<Boolean> = afterCallPreferencesRepository.afterCallScreenEnabled(application)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setAfterCallScreenEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            afterCallPreferencesRepository.setAfterCallScreenEnabled(getApplication(), enabled)
+        }
+    }
 
     init {
         viewModelScope.launch {

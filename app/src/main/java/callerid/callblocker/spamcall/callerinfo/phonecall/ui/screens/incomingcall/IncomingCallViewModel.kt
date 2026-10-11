@@ -61,6 +61,17 @@ class IncomingCallViewModel(application: Application) : AndroidViewModel(applica
         CallRepository.reject()
     }
 
+    /** Telecom's own quick-reply texts for the ringing call — see CallRepository.quickReplies. */
+    val quickReplies: StateFlow<List<String>> = CallRepository.quickReplies
+
+    /** Whether [replyWithMessage] can work for this call (carrier/network support + a number). */
+    fun canReplyViaText(): Boolean = CallRepository.canRespondViaText()
+
+    /** Declines the call and has Telecom text [text] back to the caller. */
+    fun replyWithMessage(text: String) {
+        CallRepository.rejectWithMessage(text)
+    }
+
     /** Adds the current caller to the system block list — used by the Incoming Spam screen's
      * middle button (mirrors ContactDetailScreen's block action, minus the confirm step: there's
      * no time for a confirmation screen while a call is actively ringing). This now results in

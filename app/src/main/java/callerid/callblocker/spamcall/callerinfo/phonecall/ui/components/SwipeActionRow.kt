@@ -1,6 +1,6 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.components
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -45,8 +46,8 @@ private val RevealMessageColor = Color(0xFF1565C0)
 
 /**
  * Wraps a list row with swipe-right-to-call / swipe-left-to-message — a reveal-and-act pattern,
- * not a dismiss/removal, so this is a custom drag (via [Animatable]) rather than
- * SwipeToDismissBox: the row must always spring back to its resting position, never actually
+ * not a dismiss/removal, so this is a custom drag (a float state, sprung back with [animate])
+ * rather than SwipeToDismissBox: the row must always spring back to its resting position, never actually
  * leave the list. Shared between the Recents list (HomeScreen) and All Contacts so both behave
  * identically instead of duplicating the gesture logic.
  *
@@ -72,7 +73,9 @@ fun SwipeActionRow(
     // into view compose twice — once, then again when onSizeChanged first reported its width —
     // and restarted its gesture detector, on every scroll frame that brought in a new row.
     var rowWidthPx by remember { mutableFloatStateOf(0f) }
-    val offsetX = remember { Animatable(0f) }
+    // Written synchronously from each drag event (no coroutine per pointer move); only the
+    // spring-back on release runs as a coroutine.
+    var offsetX by remember { mutableFloatStateOf(0f) }
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
@@ -88,18 +91,18 @@ fun SwipeActionRow(
                 .clip(shape)
                 .background(
                     when {
-                        offsetX.value > 0f -> RevealCallColor
-                        offsetX.value < 0f -> RevealMessageColor
+                        offsetX > 0f -> RevealCallColor
+                        offsetX < 0f -> RevealMessageColor
                         else -> Color.Transparent
                     },
                 ),
         ) {
-            val triggerPx = if (offsetX.value != 0f) rowWidthPx * TRIGGER_FRACTION else 0f
-            val progress = if (triggerPx > 0f) (abs(offsetX.value) / triggerPx).coerceIn(0f, 1f) else 0f
-            val triggered = triggerPx > 0f && abs(offsetX.value) >= triggerPx
+            val triggerPx = if (offsetX != 0f) rowWidthPx * TRIGGER_FRACTION else 0f
+            val progress = if (triggerPx > 0f) (abs(offsetX) / triggerPx).coerceIn(0f, 1f) else 0f
+            val triggered = triggerPx > 0f && abs(offsetX) >= triggerPx
             val iconScale = if (triggered) 1.3f else 0.85f + 0.3f * progress
             val iconAlpha = 0.5f + 0.5f * progress
-            if (offsetX.value > 0f) {
+            if (offsetX > 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -115,7 +118,7 @@ fun SwipeActionRow(
                             .scale(iconScale),
                     )
                 }
-            } else if (offsetX.value < 0f) {
+            } else if (offsetX < 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -136,16 +139,28 @@ fun SwipeActionRow(
 
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .offset { IntOffset(offsetX.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     var wasTriggered = false
+                    var settleJob: Job? = null
+                    fun springBack() {
+                        settleJob = scope.launch {
+                            animate(initialValue = offsetX, targetValue = 0f, animationSpec = spring()) { value, _ ->
+                                offsetX = value
+                            }
+                        }
+                    }
                     detectHorizontalDragGestures(
-                        onDragStart = { wasTriggered = false },
+                        onDragStart = {
+                            wasTriggered = false
+                            // Grabbing the row mid-spring-back takes over from wherever it is.
+                            settleJob?.cancel()
+                        },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             val rowWidthPx = size.width.toFloat()
-                            val newValue = (offsetX.value + dragAmount).coerceIn(-rowWidthPx, rowWidthPx)
-                            scope.launch { offsetX.snapTo(newValue) }
+                            val newValue = (offsetX + dragAmount).coerceIn(-rowWidthPx, rowWidthPx)
+                            offsetX = newValue
                             val nowTriggered = rowWidthPx > 0f && abs(newValue) >= rowWidthPx * TRIGGER_FRACTION
                             // Fires once right as the drag crosses the trigger distance — the
                             // scale/brighten visual feedback already tracks progress continuously,
@@ -157,16 +172,14 @@ fun SwipeActionRow(
                         },
                         onDragEnd = {
                             val rowWidthPx = size.width.toFloat()
-                            val finalValue = offsetX.value
+                            val finalValue = offsetX
                             val didTrigger = rowWidthPx > 0f && abs(finalValue) >= rowWidthPx * TRIGGER_FRACTION
-                            scope.launch { offsetX.animateTo(0f, animationSpec = spring()) }
+                            springBack()
                             if (didTrigger) {
                                 if (finalValue > 0f) onCall() else onMessage()
                             }
                         },
-                        onDragCancel = {
-                            scope.launch { offsetX.animateTo(0f, animationSpec = spring()) }
-                        },
+                        onDragCancel = { springBack() },
                     )
                 },
         ) {

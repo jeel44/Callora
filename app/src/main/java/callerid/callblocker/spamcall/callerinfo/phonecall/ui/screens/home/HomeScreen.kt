@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,23 +16,24 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -50,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -71,7 +74,6 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ads.heightDp
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPromptCard
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SwipeActionRow
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import kotlinx.coroutines.launch
 
@@ -79,7 +81,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onOpenNotifications: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenSpamCenter: () -> Unit,
+    onOpenFilter: () -> Unit,
     onOpenContactDetail: (phoneNumber: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAllContacts: () -> Unit,
@@ -161,7 +163,7 @@ fun HomeScreen(
         // HomeTopBar's height includes the status-bar inset (statusBarsPadding) — on a cold start
         // that inset can still be 0 on the first measure. The header then re-measured itself taller
         // once the inset arrived, but the content's padding stayed at the stale height (80dp vs
-        // 103dp here) until some unrelated recomposition, so the search bar and everything under it
+        // 103dp here) until some unrelated recomposition, so the list and everything in it
         // dropped ~23dp a frame after first paint. As a plain Column child above the list, the
         // header's size change re-lays-out its siblings in the same pass, so the two can't diverge.
         // contentWindowInsets drops only the top side because HomeTopBar already handles the status
@@ -173,7 +175,6 @@ fun HomeScreen(
                 selected = BottomNavDestination.HOME,
                 onOpenHome = {},
                 onOpenContacts = onOpenAllContacts,
-                onOpenSpamCenter = onOpenSpamCenter,
                 onOpenSettings = onOpenSettings,
             )
         },
@@ -192,7 +193,11 @@ fun HomeScreen(
         },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            HomeTopBar(onOpenNotifications = onOpenNotifications)
+            HomeTopBar(
+                onOpenFilter = onOpenFilter,
+                onOpenNotifications = onOpenNotifications,
+                onOpenSearch = onOpenSearch,
+            )
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -201,7 +206,6 @@ fun HomeScreen(
                     .padding(horizontal = 20.dp),
             ) {
                 item { Spacer(modifier = Modifier.height(4.dp)) }
-                item { SearchBar(onClick = onOpenSearch) }
                 if (!uiState.hasCallLogPermission) {
                     item {
                         Spacer(modifier = Modifier.height(10.dp))
@@ -247,7 +251,7 @@ fun HomeScreen(
                                 // across unrelated recompositions (e.g. isLoadingMore flipping during
                                 // infinite scroll) — otherwise every visible row would fail Compose's
                                 // skip check and fully recompose on every such state change.
-                                val onRowClick = remember(call.phoneNumber) { { onOpenContactDetail(call.phoneNumber) } }
+                                val onRowInfo = remember(call.phoneNumber) { { onOpenContactDetail(call.phoneNumber) } }
                                 val onRowCall = remember(call.phoneNumber) { { onCall(call.phoneNumber) } }
                                 Column {
                                     if (!item.isFirstInDay) CallLogDivider()
@@ -262,7 +266,12 @@ fun HomeScreen(
                                         CallLogRow(
                                             call = call,
                                             count = item.calls.size,
-                                            onClick = onRowClick,
+                                            // Tap places the call (same as swipe-right); the
+                                            // trailing info icon opens the contact detail. A
+                                            // withheld (blank) number has nothing to dial, so
+                                            // like the disabled swipe it falls back to info.
+                                            onClick = if (call.phoneNumber.isNotBlank()) onRowCall else onRowInfo,
+                                            onInfoClick = onRowInfo,
                                             // Opaque, so the swipe's reveal stays hidden until dragged.
                                             modifier = Modifier.background(MaterialTheme.colorScheme.surface),
                                         )
@@ -319,13 +328,18 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeTopBar(onOpenNotifications: () -> Unit) {
+private fun HomeTopBar(
+    onOpenFilter: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenSearch: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             text = stringResource(R.string.home_title),
@@ -333,37 +347,59 @@ private fun HomeTopBar(onOpenNotifications: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = onOpenNotifications) {
-            Icon(
-                imageVector = Icons.Filled.Notifications,
-                contentDescription = stringResource(R.string.home_notifications_content_description),
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
-        }
+        TopBarIconButton(
+            icon = Icons.Filled.FilterList,
+            contentDescription = stringResource(R.string.home_filter_content_description),
+            onClick = onOpenFilter,
+        )
+        TopBarIconButton(
+            icon = Icons.Outlined.Notifications,
+            contentDescription = stringResource(R.string.home_notifications_content_description),
+            onClick = onOpenNotifications,
+            // Static for now: the Notifications feed is sample content with no read/unread state.
+            showDot = true,
+        )
+        TopBarIconButton(
+            icon = Icons.Filled.Search,
+            contentDescription = stringResource(R.string.home_search_content_description),
+            onClick = onOpenSearch,
+        )
     }
 }
 
+/** 38dp circular tap target with an 18dp glyph. [showDot] adds a 7dp red badge whose ring, in the
+ * button's own fill, cuts it into the glyph's top-right corner. */
 @Composable
-private fun SearchBar(onClick: () -> Unit) {
-    Row(
+private fun TopBarIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    showDot: Boolean = false,
+) {
+    val buttonColor = MaterialTheme.colorScheme.surfaceVariant
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(ListItemShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(buttonColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Filled.Search,
-            contentDescription = null,
-            tint = MaterialTheme.extendedColors.onSurfaceFaint,
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(18.dp),
         )
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = stringResource(R.string.home_search_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.extendedColors.onSurfaceFaint,
-        )
+        if (showDot) {
+            Box(
+                modifier = Modifier
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .size(10.dp)
+                    .background(buttonColor, CircleShape)
+                    .padding(1.5.dp)
+                    .background(MaterialTheme.extendedColors.callMissed, CircleShape),
+            )
+        }
     }
 }

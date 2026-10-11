@@ -18,16 +18,17 @@
     <string name="permission_not_now">Nicht jetzt</string>
 
     <!-- Bottom navigation -->
-    <string name="nav_home">Start</string>
+    <string name="nav_home">Zuletzt</string>
     <string name="nav_contacts">Kontakte</string>
-    <string name="nav_spam">Spam</string>
     <string name="nav_settings">Einstellungen</string>
 
     <!-- Home screen -->
     <string name="home_dialpad_content_description">Wähltastatur</string>
     <string name="home_notifications_content_description">Benachrichtigungen</string>
     <string name="home_recent_section_title">LETZTE</string>
-    <string name="home_title">Telefon</string>
+    <string name="home_title">Zuletzt</string>
+    <string name="home_filter_content_description">Filtern</string>
+    <string name="home_search_content_description">Suchen</string>
     <string name="home_call_log_permission_message">Gewähre Zugriff auf Kontakte und Anrufliste, um deine letzten Anrufe zu sehen.</string>
     <string name="home_no_recent_calls">Noch keine letzten Anrufe.</string>
     <string name="home_call_log_permission_heading">Behalte jeden Anruf im Blick</string>
@@ -146,6 +147,7 @@
 
     <!-- Contact detail screen -->
     <string name="contact_detail_more_content_description">Mehr</string>
+    <string name="call_log_contact_info_content_description">Kontaktinfo</string>
     <string name="contact_detail_copy_name">Namen kopieren</string>
     <string name="contact_detail_copy_number">Nummer kopieren</string>
     <string name="contact_detail_unmark_spam">Spam-Markierung aufheben</string>
@@ -222,12 +224,13 @@
     <!-- Settings screen -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_section_protection">Schutz</string>
-    <string name="settings_row_caller_id_spam">Anrufer-ID und Spam</string>
     <string name="settings_row_blocked_numbers">Blockierte Nummern</string>
     <string name="settings_section_preferences">Präferenzen</string>
     <string name="settings_row_dark_theme">Dunkles Design</string>
     <string name="settings_row_language">Sprache</string>
     <string name="settings_row_notifications">Benachrichtigungen</string>
+    <string name="settings_row_after_call">Bildschirm nach dem Anruf</string>
+    <string name="settings_row_after_call_subtitle">Nach jedem Anruf eine Zusammenfassung anzeigen</string>
     <string name="settings_section_support">Support</string>
     <string name="settings_row_privacy_policy">Datenschutzerklärung</string>
     <string name="settings_row_help_feedback">Hilfe und Feedback</string>
@@ -322,6 +325,9 @@
     <string name="contact_detail_clip_label_contact">Kontakt</string>
     <string name="call_app_label">Telefon</string>
     <string name="incoming_urgent_label">Dringend?</string>
+    <string name="incoming_urgent_reply_text">Ich kann gerade nicht rangehen. Wenn es dringend ist, ruf bitte noch einmal an.</string>
+    <string name="incoming_quick_reply_title">Mit Nachricht antworten</string>
+    <string name="incoming_quick_reply_write_own">Eigene Nachricht schreiben…</string>
     <string name="active_call_video_call_label">Videoanruf</string>
     <string name="active_call_hold_label">Halten</string>
     <string name="call_more_sheet_title">Mehr</string>

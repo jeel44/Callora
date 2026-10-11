@@ -16,14 +16,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,12 +41,16 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColor
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeDayLabel
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatTimeOfDay
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 /**
  * One flat call-log row (Home, Spam Center): avatar, name (or number) with a "(n)" count for a
  * run of [count] consecutive calls, the latest call's direction arrow, and its time on the right.
  * No card or elevation — rows are separated by [CallLogDivider] and grouped under
  * [CallLogDayHeader]s, so the time shown is clock time only.
+ *
+ * [onClick] is the whole-row tap; when [onInfoClick] is non-null a trailing info icon is shown
+ * that opens the contact detail on its own (Home taps-to-call, so it needs a separate way in).
  */
 @Composable
 fun CallLogRow(
@@ -49,6 +58,7 @@ fun CallLogRow(
     count: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onInfoClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -99,6 +109,17 @@ fun CallLogRow(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.extendedColors.mutedText,
         )
+        if (onInfoClick != null) {
+            // Its own clickable consumes the tap, so the row's onClick never sees it.
+            IconButton(onClick = onInfoClick, modifier = Modifier.padding(start = 4.dp).size(40.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = stringResource(R.string.call_log_contact_info_content_description),
+                    tint = MaterialTheme.extendedColors.mutedText,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
     }
 }
 
@@ -133,9 +154,12 @@ private val AvatarSize = 44.dp
 @Composable
 private fun CallLogAvatar(call: RecentCallEntry) {
     val name = call.name
+    val photoUri = call.photoUri
     when {
-        call.photoUri != null -> AsyncImage(
-            model = call.photoUri,
+        photoUri != null -> AsyncImage(
+            // Decode at the circle's size up front rather than leaving Coil to wait for the
+            // first layout pass to learn it; contentScale stays AsyncImage's default (Fit).
+            model = rememberAvatarRequest(photoUri),
             contentDescription = null,
             modifier = Modifier
                 .size(AvatarSize)
@@ -168,6 +192,15 @@ private fun CallLogAvatar(call: RecentCallEntry) {
                 modifier = Modifier.size(24.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun rememberAvatarRequest(photoUri: String): ImageRequest {
+    val context = LocalContext.current
+    val sizePx = with(LocalDensity.current) { AvatarSize.roundToPx() }
+    return remember(photoUri, sizePx) {
+        ImageRequest.Builder(context).data(photoUri).size(sizePx).build()
     }
 }
 

@@ -24,6 +24,7 @@ fun IncomingKnownScreen(
     onDecline: () -> Unit,
     onAnswer: () -> Unit,
     onMessage: () -> Unit,
+    onUrgent: () -> Unit,
     modifier: Modifier = Modifier,
     simAccountLabel: String? = null,
 ) {
@@ -38,6 +39,7 @@ fun IncomingKnownScreen(
         middleButtonIcon = Icons.AutoMirrored.Filled.Message,
         middleButtonLabel = stringResource(R.string.incoming_message_label),
         onMiddleButtonClick = onMessage,
+        onUrgent = onUrgent,
         onDecline = onDecline,
         onAnswer = onAnswer,
         modifier = modifier,
@@ -57,6 +59,7 @@ private fun IncomingKnownScreenSavedContactPreview() {
             onDecline = {},
             onAnswer = {},
             onMessage = {},
+            onUrgent = {},
         )
     }
 }
@@ -74,6 +77,7 @@ private fun IncomingKnownScreenUnknownPreview() {
             onDecline = {},
             onAnswer = {},
             onMessage = {},
+            onUrgent = {},
         )
     }
 }
