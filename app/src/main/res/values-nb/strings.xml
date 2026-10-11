@@ -134,6 +134,7 @@
     <string name="call_banner_ongoing">Pågående anrop — %1$s · %2$s</string>
     <string name="call_banner_calling">Ringer opp %1$s…</string>
     <string name="call_banner_tap_to_return">%1$s · trykk for å gå tilbake</string>
+    <string name="call_banner_tap_to_return_label">Trykk for å gå tilbake</string>
 
     <!-- Spam category picker -->
     <string name="spam_category_picker_title">Rapporter dette nummeret som</string>

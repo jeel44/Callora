@@ -146,14 +146,32 @@ private fun OngoingCallBanner(
             CallUiState.ACTIVE -> stringResource(R.string.call_banner_ongoing, name, formatCallTimer(elapsedSeconds))
             else -> stringResource(R.string.call_banner_calling, name)
         }
-        Text(
-            text = stringResource(R.string.call_banner_tap_to_return, statusText),
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // Build-2 QA #22: a long contact name (or a long elapsed-time banner) used to ellipsize
+        // the *whole* combined "<status> · tap to return" line from the end — so the one part of
+        // the banner that actually tells the user what tapping it does was exactly what got cut
+        // off, leaving only "...tap to" or less. Splitting it into two Texts means only the
+        // variable-length status part (the name/timer) can ever shrink; "Tap to return" is a
+        // short, fixed, never-weighted label that always renders in full.
+        Row(
             modifier = Modifier.weight(1f),
-        )
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text(
+                text = " · " + stringResource(R.string.call_banner_tap_to_return_label),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
         Spacer(modifier = Modifier.width(4.dp))
         IconButton(onClick = onEndCallClick, modifier = Modifier.size(28.dp)) {
             Icon(

@@ -75,6 +75,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamCategory
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamMark
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.NativeAdSlot
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SpamCategoryPickerSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.formatCallTimer
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraAccent
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraPrimary
@@ -152,6 +153,11 @@ fun CallEndedRoute(
     var data by remember { mutableStateOf<CallEndedRealData?>(null) }
     var isBlocked by remember { mutableStateOf(false) }
     var spamReported by remember { mutableStateOf(false) }
+    // Build-2 QA #21: "Report spam" here used to go straight to SpamMarkRepository with a
+    // hardcoded SpamCategory.OTHER, never asking which kind of spam it was — the one report
+    // entry point in the app that skipped the picker every other one (Contact Detail's "Block &
+    // Report Spam") already shows. Same SpamCategoryPickerSheet, same two-step flow now.
+    var showSpamCategoryPicker by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
     // Separate from [visible]: the card now starts hidden while its data loads, so "not visible"
     // no longer implies "being dismissed" — keying the dismiss effect on visible alone would
@@ -280,17 +286,7 @@ fun CallEndedRoute(
                             }
                         }
                     },
-                    onReportSpam = {
-                        coroutineScope.launch {
-                            // Same repository every other spam-marking entry point in the app uses;
-                            // no category picker here (unlike the old AfterCallScreen's
-                            // SpamCategoryPickerSheet) — this is a quick one-tap report.
-                            withContext(Dispatchers.IO) {
-                                SpamMarkRepository().markAsSpam(context, phoneNumber, SpamCategory.OTHER)
-                            }
-                            spamReported = true
-                        }
-                    },
+                    onReportSpam = { showSpamCategoryPicker = true },
                 )
                 // Below the card, never inside it: the card is measured first at its full natural
                 // height, and the ad only gets what's left (weight without fill). Its media shrinks to
@@ -303,6 +299,21 @@ fun CallEndedRoute(
                         .padding(bottom = 24.dp),
                 )
             }
+        }
+
+        if (showSpamCategoryPicker) {
+            SpamCategoryPickerSheet(
+                onDismissRequest = { showSpamCategoryPicker = false },
+                onCategorySelected = { category ->
+                    showSpamCategoryPicker = false
+                    coroutineScope.launch {
+                        withContext(Dispatchers.IO) {
+                            SpamMarkRepository().markAsSpam(context, phoneNumber, category)
+                        }
+                        spamReported = true
+                    }
+                },
+            )
         }
     }
 }
@@ -445,9 +456,10 @@ private fun CallEndedCard(
 /** Ported from the old AfterCallScreen's "Was this call spam?" prompt — the one feature that
  * screen had that this card didn't, now that AfterCallScreen no longer fires on call end. Only
  * shown for the normal/blue variant; the red spam variant already implies spam status, so asking
- * again would be redundant. Reports via the same [SpamMarkRepository] every other spam-marking
- * entry point in the app uses (defaulting to [SpamCategory.OTHER] — there's no category picker
- * here, unlike AfterCallScreen's SpamCategoryPickerSheet). [reported] is hoisted up to
+ * again would be redundant. [onReportSpam] just opens [SpamCategoryPickerSheet] (see
+ * [CallEndedRoute]'s own `showSpamCategoryPicker` state) — build-2 QA #21 was specifically that
+ * this one report entry point skipped the picker every other one in the app already shows,
+ * defaulting straight to [SpamCategory.OTHER] without asking. [reported] is hoisted up to
  * [CallEndedRoute] (same shape as [CallEndedCard]'s own isBlocked/onToggleBlock) since it reflects
  * a real repository write. "No, it's fine" has nothing to persist, so it just closes the whole
  * card via the same [onDismiss] the header's X button uses, rather than only hiding this section. */

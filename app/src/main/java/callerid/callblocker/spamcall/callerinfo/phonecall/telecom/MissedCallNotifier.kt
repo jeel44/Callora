@@ -84,7 +84,11 @@ object MissedCallNotifier {
         val formattedNumber = formatPhoneNumberForDisplay(phoneNumber)
 
         val builder = NotificationCompat.Builder(context, MISSED_CALL_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            // Build-2 QA #17: a full-color mipmap app icon can't act as a status-bar icon — the
+            // system masks it down to its alpha channel alone, which for this launcher icon
+            // renders as a plain solid circle. The same vector InCallServiceImpl's own ongoing-
+            // call notification already uses (a real alpha-shaped phone glyph) fixes it here too.
+            .setSmallIcon(R.drawable.ic_notification_call)
             .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
             .setWhen(endedAtMillis)
             .setShowWhen(true)

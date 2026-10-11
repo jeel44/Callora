@@ -41,6 +41,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,8 +50,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -79,6 +83,17 @@ fun SearchScreen(
     val uiState by viewModel.uiState.collectAsState()
     var queryField by remember { mutableStateOf(TextFieldValue(uiState.query)) }
     val context = LocalContext.current
+
+    // Build-2 QA #20: opening Search from Home used to land on an unfocused field with no
+    // keyboard, forcing an extra tap before the user could actually type anything — this screen
+    // exists for exactly one reason (typing a search query), so it should be ready for input the
+    // instant it appears, the same way a real dialer/contacts app's search bar always is.
+    val searchFieldFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        searchFieldFocusRequester.requestFocus()
+        keyboardController?.show()
+    }
 
     // No popup here — the contacts permission popup only ever shows once per install, owned by
     // the Contacts screen (AllContactsScreen). This is a plain direct runtime-permission request
@@ -127,7 +142,8 @@ fun SearchScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .clip(ListItemShape),
+                        .clip(ListItemShape)
+                        .focusRequester(searchFieldFocusRequester),
                     placeholder = {
                         Text(
                             text = stringResource(R.string.home_search_hint),

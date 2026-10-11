@@ -146,6 +146,7 @@
     <string name="call_banner_ongoing">Ongoing call — %1$s · %2$s</string>
     <string name="call_banner_calling">Calling %1$s…</string>
     <string name="call_banner_tap_to_return">%1$s · tap to return</string>
+    <string name="call_banner_tap_to_return_label">Tap to return</string>
 
     <!-- Spam category picker -->
     <string name="spam_category_picker_title">Report this number as</string>

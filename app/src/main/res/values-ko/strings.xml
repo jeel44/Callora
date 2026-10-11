@@ -133,6 +133,7 @@
     <string name="call_banner_ongoing">통화 중 — %1$s · %2$s</string>
     <string name="call_banner_calling">%1$s에게 전화 거는 중…</string>
     <string name="call_banner_tap_to_return">%1$s · 탭하여 돌아가기</string>
+    <string name="call_banner_tap_to_return_label">탭하여 돌아가기</string>
 
     <!-- Spam category picker -->
     <string name="spam_category_picker_title">이 번호를 다음으로 신고</string>
