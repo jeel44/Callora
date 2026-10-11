@@ -57,6 +57,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamRulesPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDayHeader
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogDivider
@@ -70,9 +71,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * spam_center screen — stats card and the 3 blocking-rule toggles are still local UI-only
- * state (no real spam-detection data exists to drive them yet). "Manage blocked list"'s
- * subtitle count is real, from BlockedNumbersRepository via [SpamCenterViewModel].
+ * spam_center screen — stats card and "Manage blocked list"'s subtitle count are real, from
+ * [SpamCenterViewModel]. The 3 blocking-rule toggles persist via
+ * [SpamRulesPreferencesRepository] but don't drive any actual blocking decision yet (no real
+ * community spam-detection database exists — CalloraCallScreeningService only ever checks the
+ * system block list and local spam marks).
  */
 @Composable
 fun SpamCenterScreen(
@@ -86,6 +89,21 @@ fun SpamCenterScreen(
     val blockedThisWeekCount by viewModel.blockedThisWeekCount.collectAsState()
     val blockedAllTimeCount by viewModel.blockedAllTimeCount.collectAsState()
     val spamCalls by viewModel.spamCalls.collectAsState()
+    val context = LocalContext.current
+
+    // Persisted via SpamRulesPreferencesRepository (SharedPreferences, same pattern as
+    // ThemePreferencesRepository) — these used to be plain `remember` state that reset on every
+    // restart (build-2 QA #7). Read once per composition; each toggle below writes straight
+    // through on change, same as Settings' dark-mode toggle does.
+    var autoBlockTopSpammers by remember {
+        mutableStateOf(SpamRulesPreferencesRepository.isAutoBlockTopSpammersEnabled(context))
+    }
+    var blockTelemarketers by remember {
+        mutableStateOf(SpamRulesPreferencesRepository.isBlockTelemarketersEnabled(context))
+    }
+    var blockInternationalSpam by remember {
+        mutableStateOf(SpamRulesPreferencesRepository.isBlockInternationalSpamEnabled(context))
+    }
 
     // The blocked count can change on the blocked_list screen (unblocking) or block_confirm
     // (blocking) — both reached from here — so re-check whenever this screen resumes.
@@ -130,33 +148,39 @@ fun SpamCenterScreen(
                         )
                     }
                     item {
-                        var checked by remember { mutableStateOf(true) }
                         RuleRow(
                             icon = Icons.Filled.Shield,
                             title = stringResource(R.string.spam_center_rule_auto_block_title),
                             subtitle = stringResource(R.string.spam_center_rule_auto_block_subtitle),
-                            checked = checked,
-                            onCheckedChange = { checked = it },
+                            checked = autoBlockTopSpammers,
+                            onCheckedChange = {
+                                autoBlockTopSpammers = it
+                                SpamRulesPreferencesRepository.setAutoBlockTopSpammersEnabled(context, it)
+                            },
                         )
                     }
                     item {
-                        var checked by remember { mutableStateOf(true) }
                         RuleRow(
                             icon = Icons.Filled.Storefront,
                             title = stringResource(R.string.spam_center_rule_telemarketers_title),
                             subtitle = stringResource(R.string.spam_center_rule_telemarketers_subtitle),
-                            checked = checked,
-                            onCheckedChange = { checked = it },
+                            checked = blockTelemarketers,
+                            onCheckedChange = {
+                                blockTelemarketers = it
+                                SpamRulesPreferencesRepository.setBlockTelemarketersEnabled(context, it)
+                            },
                         )
                     }
                     item {
-                        var checked by remember { mutableStateOf(false) }
                         RuleRow(
                             icon = Icons.Filled.Public,
                             title = stringResource(R.string.spam_center_rule_international_title),
                             subtitle = stringResource(R.string.spam_center_rule_international_subtitle),
-                            checked = checked,
-                            onCheckedChange = { checked = it },
+                            checked = blockInternationalSpam,
+                            onCheckedChange = {
+                                blockInternationalSpam = it
+                                SpamRulesPreferencesRepository.setBlockInternationalSpamEnabled(context, it)
+                            },
                         )
                     }
                     item {
