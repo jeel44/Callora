@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">Phone</string>
+    <string name="app_name">Caller ID</string>
 
     <!-- Onboarding -->
     <string name="onboarding_1_headline">Descubre quién te llama</string>
-    <string name="onboarding_1_subtitle">Phone identifica las llamadas entrantes en tiempo real, para que nunca tengas que adivinar quién está al otro lado de la línea.</string>
+    <string name="onboarding_1_subtitle">Caller ID identifica las llamadas entrantes en tiempo real, para que nunca tengas que adivinar quién está al otro lado de la línea.</string>
     <string name="onboarding_2_headline">Bloquea el spam antes de que suene</string>
-    <string name="onboarding_2_subtitle">Phone filtra automáticamente las llamadas automatizadas y los números de spam conocidos, manteniendo tu teléfono en silencio.</string>
+    <string name="onboarding_2_subtitle">Caller ID filtra automáticamente las llamadas automatizadas y los números de spam conocidos, manteniendo tu teléfono en silencio.</string>
     <string name="onboarding_3_headline">Tus datos son solo tuyos</string>
     <string name="onboarding_3_subtitle">Las búsquedas de identificador de llamadas se realizan sin compartir tus contactos ni tu historial de llamadas con nadie.</string>
     <string name="onboarding_button_next">Siguiente</string>
@@ -203,7 +203,7 @@
     <string name="blocked_list_status_blocked">Bloqueado</string>
     <string name="blocked_list_unblock_content_description">Desbloquear %1$s</string>
     <string name="blocked_list_empty">No hay números bloqueados</string>
-    <string name="blocked_list_unavailable_message">Phone necesita estar configurada como tu app de identificador de llamadas predeterminada para gestionar los números bloqueados</string>
+    <string name="blocked_list_unavailable_message">Caller ID necesita estar configurada como tu app de identificador de llamadas predeterminada para gestionar los números bloqueados</string>
     <string name="blocked_list_set_as_default">Establecer como predeterminada</string>
 
     <!-- Block confirm screen -->
@@ -244,10 +244,10 @@
     <string name="settings_section_support">Soporte</string>
     <string name="settings_row_privacy_policy">Política de privacidad</string>
     <string name="settings_row_help_feedback">Ayuda y comentarios</string>
-    <string name="settings_feedback_email_subject">Comentarios de Phone</string>
+    <string name="settings_feedback_email_subject">Comentarios de Caller ID</string>
     <string name="settings_row_share_app">Compartir app</string>
-    <string name="settings_share_text">Descubre Phone: identificador de llamadas y bloqueador de spam: %1$s</string>
-    <string name="settings_share_chooser_title">Compartir Phone</string>
+    <string name="settings_share_text">Descubre Caller ID: identificador de llamadas y bloqueador de spam: %1$s</string>
+    <string name="settings_share_chooser_title">Compartir Caller ID</string>
     <string name="settings_row_rate_us">Califícanos</string>
     <string name="settings_profile_fallback_name">Tu perfil</string>
 
@@ -280,7 +280,7 @@
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Así se verán tus llamadas</string>
-    <string name="setdefault_card_subtitle">Configura Phone como tu app de teléfono predeterminada para identificar llamadas y bloquear spam automáticamente.</string>
+    <string name="setdefault_card_subtitle">Configura Caller ID como tu app de teléfono predeterminada para identificar llamadas y bloquear spam automáticamente.</string>
     <string name="setdefault_feature_realtime_id">Identificación de llamadas en tiempo real</string>
     <string name="setdefault_feature_spam_blocked">Spam reportado por la comunidad bloqueado</string>
     <string name="setdefault_feature_keep_contacts">Conserva todos tus contactos actuales</string>

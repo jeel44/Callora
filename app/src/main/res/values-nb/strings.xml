@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">Phone</string>
+    <string name="app_name">Caller ID</string>
 
     <!-- Onboarding -->
     <string name="onboarding_1_headline">Vit hvem som ringer</string>
-    <string name="onboarding_1_subtitle">Phone identifiserer innkommende anrop i sanntid, så du aldri trenger å gjette hvem som ringer.</string>
+    <string name="onboarding_1_subtitle">Caller ID identifiserer innkommende anrop i sanntid, så du aldri trenger å gjette hvem som ringer.</string>
     <string name="onboarding_2_headline">Blokker spam før det ringer</string>
-    <string name="onboarding_2_subtitle">Phone filtrerer automatisk robotanrop og kjente spam-numre, slik at telefonen din holder seg stille.</string>
+    <string name="onboarding_2_subtitle">Caller ID filtrerer automatisk robotanrop og kjente spam-numre, slik at telefonen din holder seg stille.</string>
     <string name="onboarding_3_headline">Dataene dine forblir dine</string>
     <string name="onboarding_3_subtitle">Oppslag av innringer skjer uten å dele kontaktene eller anropsloggen din med noen.</string>
     <string name="onboarding_button_next">Neste</string>
@@ -203,7 +203,7 @@
     <string name="blocked_list_status_blocked">Blokkert</string>
     <string name="blocked_list_unblock_content_description">Opphev blokkering av %1$s</string>
     <string name="blocked_list_empty">Ingen blokkerte numre</string>
-    <string name="blocked_list_unavailable_message">Phone må angis som standard-appen din for anrops-ID for å administrere blokkerte numre</string>
+    <string name="blocked_list_unavailable_message">Caller ID må angis som standard-appen din for anrops-ID for å administrere blokkerte numre</string>
     <string name="blocked_list_set_as_default">Angi som standard</string>
 
     <!-- Block confirm screen -->
@@ -244,10 +244,10 @@
     <string name="settings_section_support">Støtte</string>
     <string name="settings_row_privacy_policy">Personvernerklæring</string>
     <string name="settings_row_help_feedback">Hjelp og tilbakemelding</string>
-    <string name="settings_feedback_email_subject">Phone-tilbakemelding</string>
+    <string name="settings_feedback_email_subject">Caller ID-tilbakemelding</string>
     <string name="settings_row_share_app">Del appen</string>
-    <string name="settings_share_text">Sjekk ut Phone — anrops-ID og spamblokkering: %1$s</string>
-    <string name="settings_share_chooser_title">Del Phone</string>
+    <string name="settings_share_text">Sjekk ut Caller ID — anrops-ID og spamblokkering: %1$s</string>
+    <string name="settings_share_chooser_title">Del Caller ID</string>
     <string name="settings_row_rate_us">Vurder oss</string>
     <string name="settings_profile_fallback_name">Din profil</string>
 
@@ -280,7 +280,7 @@
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Slik vil anropene dine se ut</string>
-    <string name="setdefault_card_subtitle">Angi Phone som standard telefonapp for å identifisere innringere og blokkere spam automatisk.</string>
+    <string name="setdefault_card_subtitle">Angi Caller ID som standard telefonapp for å identifisere innringere og blokkere spam automatisk.</string>
     <string name="setdefault_feature_realtime_id">Sanntids anrops-identifikasjon</string>
     <string name="setdefault_feature_spam_blocked">Spam rapportert av fellesskapet blokkert</string>
     <string name="setdefault_feature_keep_contacts">Beholder alle dine eksisterende kontakter</string>

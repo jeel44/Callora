@@ -1,11 +1,16 @@
 <resources>
-    <string name="app_name">Phone</string>
+    <!-- The app's own display name — launcher label, "Set as default" picker, etc. Deliberately
+         NOT a plain generic word like "Phone": build-2 QA (N1) found that collided with the
+         system dialer's own "Phone" entry in the default-app picker, with no way to tell them
+         apart. Keyword-aligned with the package name (callerid.callblocker.spamcall...) rather
+         than a made-up brand, per the existing global-keyword Play Store strategy. -->
+    <string name="app_name">Caller ID</string>
 
     <!-- Onboarding -->
     <string name="onboarding_1_headline">Know who\'s calling</string>
-    <string name="onboarding_1_subtitle">Phone identifies incoming calls in real time, so you never have to guess who\'s on the line.</string>
+    <string name="onboarding_1_subtitle">Caller ID identifies incoming calls in real time, so you never have to guess who\'s on the line.</string>
     <string name="onboarding_2_headline">Block spam before it rings</string>
-    <string name="onboarding_2_subtitle">Phone screens robocalls and known spam numbers automatically, keeping your phone quiet.</string>
+    <string name="onboarding_2_subtitle">Caller ID screens robocalls and known spam numbers automatically, keeping your phone quiet.</string>
     <string name="onboarding_3_headline">Your data stays yours</string>
     <string name="onboarding_3_subtitle">Caller lookups run without sharing your contacts or call history with anyone.</string>
     <string name="onboarding_button_next">Next</string>
@@ -207,7 +212,7 @@
     <string name="blocked_list_status_blocked">Blocked</string>
     <string name="blocked_list_unblock_content_description">Unblock %1$s</string>
     <string name="blocked_list_empty">No blocked numbers</string>
-    <string name="blocked_list_unavailable_message">Phone needs to be set as your default caller ID app to manage blocked numbers</string>
+    <string name="blocked_list_unavailable_message">Caller ID needs to be set as your default caller ID app to manage blocked numbers</string>
     <string name="blocked_list_set_as_default">Set as default</string>
 
     <!-- Block confirm screen -->
@@ -248,10 +253,10 @@
     <string name="settings_section_support">Support</string>
     <string name="settings_row_privacy_policy">Privacy policy</string>
     <string name="settings_row_help_feedback">Help &amp; feedback</string>
-    <string name="settings_feedback_email_subject">Phone Feedback</string>
+    <string name="settings_feedback_email_subject">Caller ID Feedback</string>
     <string name="settings_row_share_app">Share app</string>
-    <string name="settings_share_text">Check out Phone — Caller ID &amp; spam blocker: %1$s</string>
-    <string name="settings_share_chooser_title">Share Phone</string>
+    <string name="settings_share_text">Check out Caller ID — caller ID &amp; spam blocker: %1$s</string>
+    <string name="settings_share_chooser_title">Share Caller ID</string>
     <string name="settings_row_rate_us">Rate us</string>
     <string name="settings_profile_fallback_name">Your profile</string>
 
@@ -284,7 +289,7 @@
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">This is what your calls will look like</string>
-    <string name="setdefault_card_subtitle">Set Phone as your default phone app to identify callers and block spam automatically.</string>
+    <string name="setdefault_card_subtitle">Set Caller ID as your default phone app to identify callers and block spam automatically.</string>
     <string name="setdefault_feature_realtime_id">Real-time caller identification</string>
     <string name="setdefault_feature_spam_blocked">Community-reported spam blocked</string>
     <string name="setdefault_feature_keep_contacts">Keeps all your existing contacts</string>
@@ -333,7 +338,7 @@
     <string name="contact_detail_clip_label_name">Contact name</string>
     <string name="contact_detail_clip_label_number">Phone number</string>
     <string name="contact_detail_clip_label_contact">Contact</string>
-    <string name="call_app_label">Phone</string>
+    <string name="call_app_label">Caller ID</string>
     <string name="incoming_urgent_label">Urgent?</string>
     <string name="incoming_urgent_reply_text">I can\'t answer right now. If it\'s urgent, please call again.</string>
     <string name="incoming_quick_reply_title">Reply with a message</string>

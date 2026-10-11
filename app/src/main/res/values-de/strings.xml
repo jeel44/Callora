@@ -1,11 +1,11 @@
 <resources>
-    <string name="app_name">Phone</string>
+    <string name="app_name">Caller ID</string>
 
     <!-- Onboarding -->
     <string name="onboarding_1_headline">Wissen, wer anruft</string>
-    <string name="onboarding_1_subtitle">Phone erkennt eingehende Anrufe in Echtzeit, sodass du nie mehr raten musst, wer in der Leitung ist.</string>
+    <string name="onboarding_1_subtitle">Caller ID erkennt eingehende Anrufe in Echtzeit, sodass du nie mehr raten musst, wer in der Leitung ist.</string>
     <string name="onboarding_2_headline">Spam blockieren, bevor es klingelt</string>
-    <string name="onboarding_2_subtitle">Phone filtert automatisch Robocalls und bekannte Spam-Nummern und hält dein Telefon so ruhig.</string>
+    <string name="onboarding_2_subtitle">Caller ID filtert automatisch Robocalls und bekannte Spam-Nummern und hält dein Telefon so ruhig.</string>
     <string name="onboarding_3_headline">Deine Daten bleiben deine</string>
     <string name="onboarding_3_subtitle">Anrufer-Abfragen laufen ab, ohne deine Kontakte oder deinen Anrufverlauf mit jemandem zu teilen.</string>
     <string name="onboarding_button_next">Weiter</string>
@@ -203,7 +203,7 @@
     <string name="blocked_list_status_blocked">Blockiert</string>
     <string name="blocked_list_unblock_content_description">Blockierung von %1$s aufheben</string>
     <string name="blocked_list_empty">Keine blockierten Nummern</string>
-    <string name="blocked_list_unavailable_message">Phone muss als deine Standard-App für Anrufer-ID festgelegt sein, um blockierte Nummern zu verwalten</string>
+    <string name="blocked_list_unavailable_message">Caller ID muss als deine Standard-App für Anrufer-ID festgelegt sein, um blockierte Nummern zu verwalten</string>
     <string name="blocked_list_set_as_default">Als Standard festlegen</string>
 
     <!-- Block confirm screen -->
@@ -244,10 +244,10 @@
     <string name="settings_section_support">Support</string>
     <string name="settings_row_privacy_policy">Datenschutzerklärung</string>
     <string name="settings_row_help_feedback">Hilfe und Feedback</string>
-    <string name="settings_feedback_email_subject">Phone-Feedback</string>
+    <string name="settings_feedback_email_subject">Caller ID-Feedback</string>
     <string name="settings_row_share_app">App teilen</string>
-    <string name="settings_share_text">Schau dir Phone an — Anrufer-ID und Spam-Blocker: %1$s</string>
-    <string name="settings_share_chooser_title">Phone teilen</string>
+    <string name="settings_share_text">Schau dir Caller ID an — Anrufer-ID und Spam-Blocker: %1$s</string>
+    <string name="settings_share_chooser_title">Caller ID teilen</string>
     <string name="settings_row_rate_us">Bewerte uns</string>
     <string name="settings_profile_fallback_name">Dein Profil</string>
 
@@ -280,7 +280,7 @@
 
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">So werden deine Anrufe aussehen</string>
-    <string name="setdefault_card_subtitle">Lege Phone als Standard-Telefon-App fest, um Anrufer automatisch zu identifizieren und Spam zu blockieren.</string>
+    <string name="setdefault_card_subtitle">Lege Caller ID als Standard-Telefon-App fest, um Anrufer automatisch zu identifizieren und Spam zu blockieren.</string>
     <string name="setdefault_feature_realtime_id">Anrufer-Identifikation in Echtzeit</string>
     <string name="setdefault_feature_spam_blocked">Von der Community gemeldeter Spam blockiert</string>
     <string name="setdefault_feature_keep_contacts">Behält alle deine bestehenden Kontakte</string>
