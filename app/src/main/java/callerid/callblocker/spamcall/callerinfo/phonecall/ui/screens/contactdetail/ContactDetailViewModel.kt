@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.net.Uri
+import android.os.Build
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -163,6 +165,13 @@ class ContactDetailViewModel(
         }
     }
 
+    fun onWhatsAppUnavailable() {
+        val context = getApplication<Application>()
+        _uiState.value = _uiState.value.copy(
+            snackbarMessage = context.getString(R.string.contact_detail_whatsapp_not_installed),
+        )
+    }
+
     fun snackbarMessageShown() {
         _uiState.value = _uiState.value.copy(snackbarMessage = null)
     }
@@ -179,19 +188,22 @@ class ContactDetailViewModel(
         val name = _uiState.value.contact?.name ?: return
         val context = getApplication<Application>()
         copyToClipboard(context.getString(R.string.contact_detail_clip_label_name), name)
-        _uiState.value = _uiState.value.copy(
-            showOverflowMenu = false,
-            snackbarMessage = context.getString(R.string.contact_detail_snackbar_name_copied),
-        )
+        _uiState.value = _uiState.value.copy(showOverflowMenu = false)
+        showCopiedConfirmation(R.string.contact_detail_snackbar_name_copied)
     }
 
     fun onCopyNumberClicked() {
         val context = getApplication<Application>()
         copyToClipboard(context.getString(R.string.contact_detail_clip_label_number), phoneNumber)
-        _uiState.value = _uiState.value.copy(
-            showOverflowMenu = false,
-            snackbarMessage = context.getString(R.string.contact_detail_snackbar_number_copied),
-        )
+        _uiState.value = _uiState.value.copy(showOverflowMenu = false)
+        showCopiedConfirmation(R.string.contact_detail_snackbar_number_copied)
+    }
+
+    /** Long-press on the number under the name (Google Phone behaviour). */
+    fun onNumberLongPressed() {
+        val context = getApplication<Application>()
+        copyToClipboard(context.getString(R.string.contact_detail_clip_label_number), phoneNumber)
+        showCopiedConfirmation(R.string.contact_detail_snackbar_number_copied)
     }
 
     fun onCopyContactClicked() {
@@ -200,16 +212,24 @@ class ContactDetailViewModel(
         val text = if (name != null) "$name, $formattedNumber" else formattedNumber
         val context = getApplication<Application>()
         copyToClipboard(context.getString(R.string.contact_detail_clip_label_contact), text)
-        _uiState.value = _uiState.value.copy(
-            showOverflowMenu = false,
-            snackbarMessage = context.getString(R.string.contact_detail_snackbar_contact_copied),
-        )
+        _uiState.value = _uiState.value.copy(showOverflowMenu = false)
+        showCopiedConfirmation(R.string.contact_detail_snackbar_contact_copied)
     }
 
     private fun copyToClipboard(label: String, text: String) {
         val context = getApplication<Application>()
         val clipboardManager = context.getSystemService(ClipboardManager::class.java)
         clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
+    }
+
+    /**
+     * Android 13+ already shows its own system clipboard confirmation after every copy, so the
+     * app's snackbar is only shown below that — otherwise the two would double up.
+     */
+    private fun showCopiedConfirmation(@StringRes messageRes: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return
+        val message = getApplication<Application>().getString(messageRes)
+        _uiState.value = _uiState.value.copy(snackbarMessage = message)
     }
 
     /** Opens the confirmation dialog — deletion never happens directly off the menu tap. */

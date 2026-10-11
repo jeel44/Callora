@@ -1,14 +1,19 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.contactdetail
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,17 +38,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallMade
 import androidx.compose.material.icons.automirrored.filled.CallMissed
 import androidx.compose.material.icons.automirrored.filled.CallReceived
-import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +69,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,10 +77,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -88,19 +100,18 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallHistoryEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
-import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamMark
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SpamCategoryPickerSheet
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CardShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ChipShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeDayLabel
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatTimeOfDay
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
 import coil.compose.AsyncImage
 
 /**
  * Real contact_detail screen — [ContactDetailViewModel] looks the nav-argument phone number
- * up against the Contacts provider. Shows the saved-contact variant on a match, otherwise an
+ * up against the Contacts provider. Shows the saved contact's name/photo on a match, otherwise an
  * honest "Unknown number" state (no fabricated spam/report data — no real spam detection exists).
  */
 @Composable
@@ -125,8 +136,20 @@ fun ContactDetailScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val onBlockAction: () -> Unit = {
-        if (uiState.isBlocked) viewModel.unblockNumber() else onNavigateToBlockConfirm(uiState.phoneNumber)
+    // "Block & Report Spam": already blocked → the existing one-tap unblock; already spam-marked →
+    // straight to block_confirm; otherwise the existing report (category picker) flow first, and
+    // block_confirm once a category is picked (see the SpamCategoryPickerSheet below).
+    val onBlockAndReport: () -> Unit = {
+        when {
+            uiState.isBlocked -> viewModel.unblockNumber()
+            uiState.spamMark != null -> onNavigateToBlockConfirm(uiState.phoneNumber)
+            else -> viewModel.onReportClicked()
+        }
+    }
+
+    val onMessage: () -> Unit = { context.startActivity(smsIntent(uiState.phoneNumber)) }
+    val onWhatsApp: () -> Unit = {
+        if (!openWhatsAppChat(context, uiState.phoneNumber)) viewModel.onWhatsAppUnavailable()
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -175,11 +198,11 @@ fun ContactDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) {
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.dialpad_back_content_description),
@@ -187,7 +210,7 @@ fun ContactDetailScreen(
                     )
                 }
                 Box {
-                    IconButton(onClick = viewModel::onOverflowMenuOpened) {
+                    IconButton(onClick = viewModel::onOverflowMenuOpened, modifier = Modifier.size(40.dp)) {
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = stringResource(R.string.contact_detail_more_content_description),
@@ -202,6 +225,10 @@ fun ContactDetailScreen(
                         onCopyName = viewModel::onCopyNameClicked,
                         onCopyNumber = viewModel::onCopyNumberClicked,
                         onCopyContact = viewModel::onCopyContactClicked,
+                        onAddToContacts = {
+                            viewModel.onOverflowMenuDismissed()
+                            context.startActivity(addContactIntent(uiState.phoneNumber))
+                        },
                         onToggleSpamMark = viewModel::onToggleSpamMarkClicked,
                         onDeleteClicked = viewModel::onDeleteClicked,
                     )
@@ -221,29 +248,51 @@ fun ContactDetailScreen(
                             .fillMaxSize()
                             .padding(innerPadding)
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp),
+                            .padding(horizontal = 20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         val contact = uiState.contact
-                        if (contact != null) {
-                            SavedContactContent(
-                                contact = contact,
-                                isBlocked = uiState.isBlocked,
-                                onBlockAction = onBlockAction,
-                                onCall = onCall,
-                            )
-                        } else {
-                            UnknownContactContent(
-                                phoneNumber = uiState.phoneNumber,
-                                isBlocked = uiState.isBlocked,
-                                spamMark = uiState.spamMark,
-                                onBlockAction = onBlockAction,
-                                onCall = onCall,
-                                onReport = viewModel::onReportClicked,
-                                onUnmarkSpam = viewModel::onUnmarkSpamClicked,
-                            )
+                        IdentityBlock(
+                            contact = contact,
+                            phoneNumber = uiState.phoneNumber,
+                            onNumberLongPress = viewModel::onNumberLongPressed,
+                        )
+                        if (uiState.spamMark != null) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            SpamMarkChip(onUnmark = viewModel::onUnmarkSpamClicked)
                         }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        ActionRow(
+                            onCall = onCall,
+                            onMessage = onMessage,
+                            onWhatsApp = onWhatsApp,
+                            // No video-call support exists anywhere in the app yet (ActiveCallScreen's
+                            // Video button only shows an "unsupported" toast), so this places a normal
+                            // call for now.
+                            onVideo = onCall,
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        NumberCard(
+                            phoneNumber = uiState.phoneNumber,
+                            onMessage = onMessage,
+                            onNumberLongPress = viewModel::onNumberLongPressed,
+                        )
+
+                        if (contact != null && (contact.organization != null || contact.email != null)) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            DetailCard(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
+                                contact.organization?.let { AboutRow(icon = Icons.Filled.Work, text = it) }
+                                contact.email?.let { AboutRow(icon = Icons.Filled.Mail, text = it) }
+                            }
+                        }
+
                         CallHistorySection(callHistory = uiState.callHistory)
+
+                        BlockAndReportRow(isBlocked = uiState.isBlocked, onClick = onBlockAndReport)
+
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
@@ -253,7 +302,10 @@ fun ContactDetailScreen(
     if (uiState.showReportSheet) {
         SpamCategoryPickerSheet(
             onDismissRequest = viewModel::onReportSheetDismissed,
-            onCategorySelected = viewModel::onReportCategorySelected,
+            onCategorySelected = { category ->
+                viewModel.onReportCategorySelected(category)
+                onNavigateToBlockConfirm(uiState.phoneNumber)
+            },
         )
     }
 
@@ -286,6 +338,7 @@ private fun ContactOverflowMenu(
     onCopyName: () -> Unit,
     onCopyNumber: () -> Unit,
     onCopyContact: () -> Unit,
+    onAddToContacts: () -> Unit,
     onToggleSpamMark: () -> Unit,
     onDeleteClicked: () -> Unit,
 ) {
@@ -305,6 +358,15 @@ private fun ContactOverflowMenu(
             leadingIcon = { Icon(imageVector = Icons.Filled.ContentCopy, contentDescription = null) },
             onClick = onCopyNumber,
         )
+        // An unsaved number's only route to the system "new contact" form now that the action row
+        // no longer has a Save button.
+        if (!hasContact) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.contact_detail_add_to_contacts)) },
+                leadingIcon = { Icon(imageVector = Icons.Filled.PersonAdd, contentDescription = null) },
+                onClick = onAddToContacts,
+            )
+        }
         // Spam-marking only needs the phone number, not a saved contact record, so — unlike
         // Copy name/Copy contact/Delete — it stays available for unsaved numbers too.
         DropdownMenuItem(
@@ -348,147 +410,59 @@ private fun ContactOverflowMenu(
     }
 }
 
-@Composable
-private fun SavedContactContent(contact: Contact, isBlocked: Boolean, onBlockAction: () -> Unit, onCall: () -> Unit) {
-    val context = LocalContext.current
-    Spacer(modifier = Modifier.height(8.dp))
+private val DetailCardShape = RoundedCornerShape(18.dp)
+private val ActionButtonShape = RoundedCornerShape(20.dp)
 
-    if (contact.photoUri != null) {
-        AsyncImage(
-            model = contact.photoUri,
-            contentDescription = null,
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape),
-        )
-    } else {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.extendedColors.success),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = (contact.name.firstOrNull { it.isLetter() }?.uppercaseChar() ?: '#').toString(),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
-            )
-        }
+/** WhatsApp's brand green — deliberately a fixed literal, not a theme token. */
+private val WhatsAppGreen = Color(0xFF25D366)
+
+/** Up to two initials ("Priya Sharma" → "PS"), or '#' when the name has no letters at all. */
+private fun initialsOf(name: String): String {
+    val initials = name.split(' ')
+        .mapNotNull { word -> word.firstOrNull { it.isLetter() }?.uppercaseChar() }
+    return when {
+        initials.isEmpty() -> "#"
+        initials.size == 1 -> initials.first().toString()
+        else -> "${initials.first()}${initials.last()}"
     }
-
-    Spacer(modifier = Modifier.height(20.dp))
-
-    Text(
-        text = contact.name,
-        style = MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp),
-        color = MaterialTheme.colorScheme.onSurface,
-        textAlign = TextAlign.Center,
-    )
-
-    Spacer(modifier = Modifier.height(4.dp))
-
-    Text(
-        text = formatPhoneNumberForDisplay(contact.phoneNumber),
-        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-        color = MaterialTheme.extendedColors.onSurfaceFaint,
-        textAlign = TextAlign.Center,
-    )
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    StatusChip(
-        text = stringResource(R.string.call_tag_saved_contact),
-        icon = Icons.Filled.CheckCircle,
-        color = MaterialTheme.extendedColors.success,
-    )
-
-    Spacer(modifier = Modifier.height(28.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        ContactAction(
-            icon = Icons.Filled.Call,
-            label = stringResource(R.string.contact_detail_action_call),
-            tint = MaterialTheme.colorScheme.primary,
-            onClick = onCall,
-        )
-        ContactAction(
-            icon = Icons.AutoMirrored.Filled.Message,
-            label = stringResource(R.string.contact_detail_action_message),
-            tint = MaterialTheme.colorScheme.primary,
-            onClick = { context.startActivity(smsIntent(contact.phoneNumber)) },
-        )
-        ContactAction(
-            icon = Icons.Filled.Block,
-            label = if (isBlocked) stringResource(R.string.contact_detail_action_unblock) else stringResource(R.string.contact_detail_action_block),
-            tint = if (isBlocked) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.spam,
-            onClick = onBlockAction,
-        )
-    }
-
-    if (contact.organization != null || contact.email != null) {
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = stringResource(R.string.contact_detail_about_section_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.extendedColors.onSurfaceFaint,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 10.dp),
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(CardShape)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(vertical = 8.dp, horizontal = 18.dp),
-        ) {
-            contact.organization?.let { AboutRow(icon = Icons.Filled.Work, text = it) }
-            contact.email?.let { AboutRow(icon = Icons.Filled.Mail, text = it) }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(24.dp))
 }
 
 @Composable
-private fun UnknownContactContent(
-    phoneNumber: String,
-    isBlocked: Boolean,
-    spamMark: SpamMark?,
-    onBlockAction: () -> Unit,
-    onCall: () -> Unit,
-    onReport: () -> Unit,
-    onUnmarkSpam: () -> Unit,
-) {
-    val context = LocalContext.current
+private fun IdentityBlock(contact: Contact?, phoneNumber: String, onNumberLongPress: () -> Unit) {
     Spacer(modifier = Modifier.height(8.dp))
 
-    Box(
-        modifier = Modifier
-            .size(96.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Person,
-            contentDescription = null,
-            tint = MaterialTheme.extendedColors.onSurfaceFaint,
-            modifier = Modifier.size(48.dp),
-        )
+    val avatarModifier = Modifier
+        .size(104.dp)
+        .clip(CircleShape)
+    if (contact?.photoUri != null) {
+        AsyncImage(model = contact.photoUri, contentDescription = null, modifier = avatarModifier)
+    } else {
+        Box(
+            modifier = avatarModifier.background(MaterialTheme.extendedColors.accentContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (contact != null) {
+                Text(
+                    text = initialsOf(contact.name),
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(52.dp),
+                )
+            }
+        }
     }
 
-    Spacer(modifier = Modifier.height(20.dp))
+    Spacer(modifier = Modifier.height(14.dp))
 
     Text(
-        text = stringResource(R.string.active_call_unknown_caller),
-        style = MaterialTheme.typography.titleLarge.copy(fontSize = 21.sp),
+        text = contact?.name ?: stringResource(R.string.active_call_unknown_caller),
+        style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.Center,
     )
@@ -496,54 +470,231 @@ private fun UnknownContactContent(
     Spacer(modifier = Modifier.height(4.dp))
 
     Text(
-        text = formatPhoneNumberForDisplay(phoneNumber),
-        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-        color = MaterialTheme.extendedColors.onSurfaceFaint,
+        text = stringResource(
+            R.string.contact_detail_number_subtitle,
+            stringResource(R.string.contact_detail_number_label),
+            formatPhoneNumberForDisplay(phoneNumber),
+        ),
+        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
+        modifier = Modifier.copyNumberOnLongPress(onNumberLongPress),
     )
+}
 
-    if (spamMark != null) {
-        Spacer(modifier = Modifier.height(14.dp))
-        SpamMarkChip(onUnmark = onUnmarkSpam)
-    }
-
-    Spacer(modifier = Modifier.height(28.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        ContactAction(
-            icon = Icons.Filled.Call,
+@Composable
+private fun ActionRow(
+    onCall: () -> Unit,
+    onMessage: () -> Unit,
+    onWhatsApp: () -> Unit,
+    onVideo: () -> Unit,
+) {
+    val outlinedBackground = MaterialTheme.colorScheme.surface
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+    val onOutlined = MaterialTheme.colorScheme.onSurface
+    Row(horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally)) {
+        ActionButton(
+            iconRes = R.drawable.ic_call,
+            iconTint = MaterialTheme.colorScheme.onPrimary,
             label = stringResource(R.string.contact_detail_action_call),
-            tint = MaterialTheme.colorScheme.primary,
+            background = MaterialTheme.colorScheme.primary,
             onClick = onCall,
         )
-        ContactAction(
-            icon = Icons.AutoMirrored.Filled.Message,
+        ActionButton(
+            iconRes = R.drawable.ic_message,
+            iconTint = onOutlined,
             label = stringResource(R.string.contact_detail_action_message),
-            tint = MaterialTheme.colorScheme.primary,
-            onClick = { context.startActivity(smsIntent(phoneNumber)) },
+            background = outlinedBackground,
+            borderColor = outlineColor,
+            onClick = onMessage,
         )
-        ContactAction(
-            icon = Icons.Filled.Bookmark,
-            label = stringResource(R.string.contact_detail_action_save),
-            tint = MaterialTheme.colorScheme.primary,
-            onClick = { context.startActivity(addContactIntent(phoneNumber)) },
+        ActionButton(
+            iconRes = R.drawable.ic_whatsapp,
+            // Full-colour logo asset (green bubble + white handset) — tinting would flatten it.
+            iconTint = Color.Unspecified,
+            label = stringResource(R.string.contact_detail_action_whatsapp),
+            background = WhatsAppGreen,
+            onClick = onWhatsApp,
         )
-        ContactAction(
-            icon = Icons.Filled.Block,
-            label = if (isBlocked) stringResource(R.string.contact_detail_action_unblock) else stringResource(R.string.contact_detail_action_block),
-            tint = if (isBlocked) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.spam,
-            onClick = onBlockAction,
-        )
-        ContactAction(
-            icon = Icons.Filled.Flag,
-            label = stringResource(R.string.contact_detail_action_report),
-            tint = MaterialTheme.extendedColors.spam,
-            onClick = onReport,
+        ActionButton(
+            iconRes = R.drawable.ic_videocam,
+            iconTint = onOutlined,
+            label = stringResource(R.string.contact_detail_action_video),
+            background = outlinedBackground,
+            borderColor = outlineColor,
+            onClick = onVideo,
         )
     }
+}
+
+@Composable
+private fun ActionButton(
+    @DrawableRes iconRes: Int,
+    iconTint: Color,
+    label: String,
+    background: Color,
+    onClick: () -> Unit,
+    borderColor: Color? = null,
+) {
+    // Only the squircle is the touch target (so the ripple matches its shape and never clips the
+    // label); merging lets TalkBack read the label as the button's name.
+    Column(
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(ActionButtonShape)
+                .background(background)
+                .let { if (borderColor != null) it.border(1.dp, borderColor, ActionButtonShape) else it }
+                .clickable(role = Role.Button, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+            color = MaterialTheme.extendedColors.onSurfaceSoft,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+@Composable
+private fun DetailCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = DetailCardShape)
+            .clip(DetailCardShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it }
+            .then(modifier),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun IconChip(icon: ImageVector, tint: Color, background: Color) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(ChipShape)
+            .background(background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun NumberCard(phoneNumber: String, onMessage: () -> Unit, onNumberLongPress: () -> Unit) {
+    DetailCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconChip(
+                icon = Icons.Filled.Call,
+                tint = MaterialTheme.colorScheme.primary,
+                background = MaterialTheme.extendedColors.accentContainer,
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatPhoneNumberForDisplay(phoneNumber),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 15.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFeatureSettings = "tnum",
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.copyNumberOnLongPress(onNumberLongPress),
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.contact_detail_number_label),
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.extendedColors.accentContainer)
+                    .clickable(role = Role.Button, onClick = onMessage),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_message),
+                    contentDescription = stringResource(R.string.contact_detail_action_message),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlockAndReportRow(isBlocked: Boolean, onClick: () -> Unit) {
+    val color = MaterialTheme.colorScheme.error
+    DetailCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconChip(icon = Icons.Filled.Block, tint = color, background = color.copy(alpha = 0.14f))
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = if (isBlocked) {
+                    stringResource(R.string.contact_detail_action_unblock)
+                } else {
+                    stringResource(R.string.contact_detail_block_report_spam)
+                },
+                style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                color = color,
+            )
+        }
+    }
+}
+
+/**
+ * Long-press-to-copy on the displayed number, with the same LongPress haptic SwipeActionRow uses
+ * for its trigger. The semantics action exposes it to TalkBack, which can't see pointerInput.
+ */
+@Composable
+private fun Modifier.copyNumberOnLongPress(onLongPress: () -> Unit): Modifier {
+    val haptics = LocalHapticFeedback.current
+    val label = stringResource(R.string.contact_detail_copy_number)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+    return this
+        .semantics {
+            onLongClick(label = label) {
+                currentOnLongPress()
+                true
+            }
+        }
+        .pointerInput(Unit) {
+            detectTapGestures(
+                onLongPress = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    currentOnLongPress()
+                },
+            )
+        }
 }
 
 private fun smsIntent(phoneNumber: String): Intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber"))
@@ -553,28 +704,26 @@ private fun addContactIntent(phoneNumber: String): Intent =
         putExtra(ContactsContract.Intents.Insert.PHONE, phoneNumber)
     }
 
-@Composable
-private fun StatusChip(text: String, icon: ImageVector, color: Color) {
-    Row(
-        modifier = Modifier
-            .clip(ChipShape)
-            .background(color.copy(alpha = 0.14f))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(16.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = color,
-        )
+private val WhatsAppPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
+
+/**
+ * Opens a WhatsApp chat via wa.me, which wants digits only with the country code — so the number
+ * goes through [normalizeDialedNumber] first (bare Indian numbers gain 91). The intent is pinned
+ * to the WhatsApp/WhatsApp Business package: unpinned, wa.me would just open in the browser when
+ * WhatsApp isn't installed. Returns false when neither app is installed.
+ */
+private fun openWhatsAppChat(context: Context, phoneNumber: String): Boolean {
+    val digits = normalizeDialedNumber(phoneNumber).filter { it.isDigit() }
+    val uri = Uri.parse("https://wa.me/$digits")
+    for (packageName in WhatsAppPackages) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
+            return true
+        } catch (e: ActivityNotFoundException) {
+            // Not installed — try the next package.
+        }
     }
+    return false
 }
 
 /** This device's own local spam mark — deliberately worded as this device's opinion (never
@@ -895,36 +1044,6 @@ private fun AboutRow(icon: ImageVector, text: String) {
             text = text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun ContactAction(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier.padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(58.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tint,
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-            color = MaterialTheme.extendedColors.onSurfaceSoft,
-            maxLines = 1,
-            softWrap = false,
         )
     }
 }

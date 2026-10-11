@@ -165,6 +165,14 @@
     <string name="contact_detail_about_section_title">Info</string>
     <string name="contact_detail_action_save">Speichern</string>
     <string name="contact_detail_action_report">Melden</string>
+    <string name="contact_detail_action_whatsapp">WhatsApp</string>
+    <string name="contact_detail_action_video">Video</string>
+    <string name="contact_detail_number_label">Telefon</string>
+    <string name="contact_detail_number_subtitle">%1$s • %2$s</string>
+    <string name="contact_detail_recent_title">ZULETZT</string>
+    <string name="contact_detail_block_report_spam">Blockieren &amp; als Spam melden</string>
+    <string name="contact_detail_whatsapp_not_installed">WhatsApp ist nicht installiert</string>
+    <string name="contact_detail_add_to_contacts">Zu Kontakten hinzufügen</string>
     <string name="contact_detail_spam_marked_you">Du hast dies als Spam markiert</string>
     <string name="contact_detail_undo">Rückgängig</string>
     <string name="contact_detail_call_history_title">Anrufverlauf</string>

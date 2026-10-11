@@ -165,6 +165,14 @@
     <string name="contact_detail_about_section_title">Om</string>
     <string name="contact_detail_action_save">Lagre</string>
     <string name="contact_detail_action_report">Rapporter</string>
+    <string name="contact_detail_action_whatsapp">WhatsApp</string>
+    <string name="contact_detail_action_video">Video</string>
+    <string name="contact_detail_number_label">Telefon</string>
+    <string name="contact_detail_number_subtitle">%1$s • %2$s</string>
+    <string name="contact_detail_recent_title">NYLIGE</string>
+    <string name="contact_detail_block_report_spam">Blokker og rapporter spam</string>
+    <string name="contact_detail_whatsapp_not_installed">WhatsApp er ikke installert</string>
+    <string name="contact_detail_add_to_contacts">Legg til i kontakter</string>
     <string name="contact_detail_spam_marked_you">Du merket dette som spam</string>
     <string name="contact_detail_undo">Angre</string>
     <string name="contact_detail_call_history_title">Anropshistorikk</string>
