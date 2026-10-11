@@ -109,6 +109,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelative
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatTimeOfDay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.initialsOf
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 
 /**
@@ -149,7 +150,7 @@ fun ContactDetailScreen(
         }
     }
 
-    val onMessage: () -> Unit = { context.startActivity(smsIntent(uiState.phoneNumber)) }
+    val onMessage: () -> Unit = { context.startExternalActivity(smsIntent(uiState.phoneNumber)) }
     val onWhatsApp: () -> Unit = {
         if (!openWhatsAppChat(context, uiState.phoneNumber)) viewModel.onWhatsAppUnavailable()
     }
@@ -235,7 +236,7 @@ fun ContactDetailScreen(
                         onCopyContact = viewModel::onCopyContactClicked,
                         onAddToContacts = {
                             viewModel.onOverflowMenuDismissed()
-                            context.startActivity(addContactIntent(uiState.phoneNumber))
+                            context.startExternalActivity(addContactIntent(uiState.phoneNumber))
                         },
                         onToggleSpamMark = viewModel::onToggleSpamMarkClicked,
                         onDeleteClicked = viewModel::onDeleteClicked,
@@ -711,7 +712,7 @@ private fun openWhatsAppChat(context: Context, phoneNumber: String): Boolean {
     val uri = Uri.parse("https://wa.me/$digits")
     for (packageName in WhatsAppPackages) {
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
+            context.startExternalActivity(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
             return true
         } catch (e: ActivityNotFoundException) {
             // Not installed — try the next package.

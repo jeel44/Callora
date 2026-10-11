@@ -64,6 +64,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.calloraSwitchColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 
 /**
  * Settings screen. The dark-theme toggle flips [ThemeState.isDarkMode], which
@@ -191,7 +192,10 @@ fun SettingsScreen(
                                 title = stringResource(R.string.settings_row_privacy_policy),
                                 onClick = {
                                     try {
-                                        context.startActivity(
+                                        // Build-2 QA #15: this app-leaving hop used to come back to
+                                        // a full-screen App Open ad every time — see
+                                        // startExternalActivity's own doc.
+                                        context.startExternalActivity(
                                             Intent(
                                                 Intent.ACTION_VIEW,
                                                 Uri.parse("https://sites.google.com/view/caller-id-spam-detection/home"),
@@ -208,7 +212,7 @@ fun SettingsScreen(
                                 title = stringResource(R.string.settings_row_help_feedback),
                                 onClick = {
                                     try {
-                                        context.startActivity(
+                                        context.startExternalActivity(
                                             Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:tarangsutariya3440@gmail.com")).apply {
                                                 putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.settings_feedback_email_subject))
                                             },
@@ -228,7 +232,7 @@ fun SettingsScreen(
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, context.getString(R.string.settings_share_text, playStoreUrl))
                                     }
-                                    context.startActivity(
+                                    context.startExternalActivity(
                                         Intent.createChooser(shareIntent, context.getString(R.string.settings_share_chooser_title)),
                                     )
                                 },
@@ -242,13 +246,13 @@ fun SettingsScreen(
                                 onClick = {
                                     val packageName = context.packageName
                                     try {
-                                        context.startActivity(
+                                        context.startExternalActivity(
                                             Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
                                                 setPackage("com.android.vending")
                                             },
                                         )
                                     } catch (e: ActivityNotFoundException) {
-                                        context.startActivity(
+                                        context.startExternalActivity(
                                             Intent(
                                                 Intent.ACTION_VIEW,
                                                 Uri.parse("https://play.google.com/store/apps/details?id=$packageName"),

@@ -268,6 +268,46 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
         return entries
     }
 
+    /**
+     * Distinct call-log numbers containing [query]'s digits as a substring, most recent first, up
+     * to [limit] — lets Search (build-2 QA #14: "Searching a number from call history ... gives
+     * 'No matches'") find a number that was only ever called/received, never saved as a contact.
+     * Matched the same way [ContactsRepository.getContactsMatchingDigits] matches T9 digits
+     * (`filter { isDigit() }.contains(...)`) rather than [PhoneNumberUtils.compare], since a
+     * partial, in-progress search query is rarely a complete, comparable number. No-op if [query]
+     * has no digits at all — a name can't be matched against the call log, which doesn't reliably
+     * carry caller names (see [getRecentCalls]'s own comment on CACHED_NAME going stale).
+     */
+    fun searchCallLogNumbers(context: Context, query: String, limit: Int = 20): List<String> {
+        val queryDigits = query.filter { it.isDigit() }
+        if (queryDigits.isEmpty() || !CallDataPermissions.hasCallLog(context)) return emptyList()
+
+        val projection = arrayOf(CallLog.Calls.NUMBER)
+        val queryUri = CallLog.Calls.CONTENT_URI.buildUpon()
+            .appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, CALL_HISTORY_SCAN_CHUNK_SIZE.toString())
+            .build()
+
+        val results = mutableListOf<String>()
+        val seen = mutableSetOf<String>()
+        context.contentResolver.query(
+            queryUri,
+            projection,
+            null,
+            null,
+            "${CallLog.Calls.DATE} DESC",
+        )?.use { cursor ->
+            val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            while (cursor.moveToNext() && results.size < limit) {
+                val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
+                if (number.isNullOrBlank() || number == "-1" || number == "-2") continue
+                if (!number.filter { it.isDigit() }.contains(queryDigits)) continue
+                if (!seen.add(number)) continue
+                results += number
+            }
+        }
+        return results
+    }
+
     /** Call-capable accounts to tag rows with — empty on a single-SIM device (or without
      * READ_PHONE_STATE), so rows there never carry a SIM label, matching SimAccountLabel. Fetched
      * once per query, not per row. */

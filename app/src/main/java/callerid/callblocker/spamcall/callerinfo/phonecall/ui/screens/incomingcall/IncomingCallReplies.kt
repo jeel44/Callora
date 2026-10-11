@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 
 /**
@@ -106,6 +107,7 @@ private fun QuickReplyRow(icon: ImageVector, label: String, onClick: () -> Unit)
 internal fun declineAndOpenSmsComposer(activity: Activity, phoneNumber: String, body: String? = null) {
     val openComposer = {
         CallRepository.rejectForSmsCompose()
+        AppOpenAdManager.suppressCurrentForeground()
         activity.startActivity(
             Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber"))
                 .apply { if (body != null) putExtra("sms_body", body) }

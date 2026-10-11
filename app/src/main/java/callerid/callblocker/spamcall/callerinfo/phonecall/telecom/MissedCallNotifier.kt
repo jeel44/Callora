@@ -46,10 +46,13 @@ object MissedCallNotifier {
 
     /** [isIncoming]/[summary.durationSeconds] mirror the exact "was this call ever answered"
      * check CallEndedScreen already uses for its own "Missed call" status line (see
-     * CallEndedScreen.kt) — a call that rang and was declined counts as missed here too, same as
-     * everywhere else in this app; there's no separate "declined" category. */
+     * CallEndedScreen.kt and [CallSummary.wasDeclined]'s doc) — but a call the user actively
+     * declined (Incoming Call's Decline button, or a quick-reply) is excluded here (build-2 QA
+     * #16: "declined call labelled 'Missed call' ... still raises a missed-call notification"). A
+     * stock dialer never raises a missed-call notification for a call you yourself rejected —
+     * only for one that simply went unanswered. */
     suspend fun notifyIfMissed(context: Context, summary: CallSummary, isIncoming: Boolean, endedAtMillis: Long) {
-        if (!isIncoming || summary.durationSeconds > 0L) return
+        if (!isIncoming || summary.durationSeconds > 0L || summary.wasDeclined) return
         val phoneNumber = summary.phoneNumber ?: return
 
         withContext(Dispatchers.IO) {

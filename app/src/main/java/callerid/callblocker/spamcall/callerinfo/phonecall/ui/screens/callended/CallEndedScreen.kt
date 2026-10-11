@@ -84,6 +84,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.LightSurfaceV
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeDayLabel
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -117,6 +118,16 @@ private data class CallEndedRealData(
 private fun isCallMissed(isIncoming: Boolean, durationSeconds: Long): Boolean =
     durationSeconds <= 0L && isIncoming
 
+/** Build-2 QA #16: a call the user actively declined (Incoming Call's Decline button, or a quick
+ * reply) was previously labelled "Missed call" same as one that simply rang out unanswered —
+ * [wasDeclined] (plumbed from [callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallSummary])
+ * is what tells the two apart here. */
+private fun callStatusWord(isIncoming: Boolean, durationSeconds: Long, wasDeclined: Boolean): Int = when {
+    wasDeclined -> R.string.call_status_declined
+    isCallMissed(isIncoming, durationSeconds) -> R.string.call_status_missed
+    else -> R.string.call_status_ended
+}
+
 /**
  * Loads the ended call's real contact/spam/block state and renders [CallEndedCard] as a
  * dimmed-backdrop popup. [onOpenContactDetail] and [onDismiss] are the only two ways this screen
@@ -127,6 +138,7 @@ fun CallEndedRoute(
     phoneNumber: String,
     isIncoming: Boolean,
     durationSeconds: Long,
+    wasDeclined: Boolean,
     endedAtMillis: Long,
     onDismiss: () -> Unit,
     onOpenContactDetail: (phoneNumber: String) -> Unit,
@@ -219,6 +231,7 @@ fun CallEndedRoute(
                     phoneNumber = phoneNumber,
                     isIncoming = isIncoming,
                     durationSeconds = durationSeconds,
+                    wasDeclined = wasDeclined,
                     endedAtMillis = endedAtMillis,
                     contact = data?.contact,
                     spamMark = data?.spamMark,
@@ -227,10 +240,10 @@ fun CallEndedRoute(
                     onDismiss = ::requestDismiss,
                     onCall = { onCall(phoneNumber) },
                     onMessage = {
-                        context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber")))
+                        context.startExternalActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$phoneNumber")))
                     },
                     onSave = {
-                        context.startActivity(
+                        context.startExternalActivity(
                             Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
                                 putExtra(ContactsContract.Intents.Insert.PHONE, phoneNumber)
                             },
@@ -299,6 +312,7 @@ private fun CallEndedCard(
     phoneNumber: String,
     isIncoming: Boolean,
     durationSeconds: Long,
+    wasDeclined: Boolean,
     endedAtMillis: Long,
     contact: Contact?,
     spamMark: SpamMark?,
@@ -338,6 +352,7 @@ private fun CallEndedCard(
             isSpam = isSpam,
             isIncoming = isIncoming,
             durationSeconds = durationSeconds,
+            wasDeclined = wasDeclined,
             endedAtMillis = endedAtMillis,
             contact = contact,
             spamMark = spamMark,
@@ -500,6 +515,7 @@ private fun HeaderBand(
     isSpam: Boolean,
     isIncoming: Boolean,
     durationSeconds: Long,
+    wasDeclined: Boolean,
     endedAtMillis: Long,
     contact: Contact?,
     spamMark: SpamMark?,
@@ -512,8 +528,7 @@ private fun HeaderBand(
         Brush.linearGradient(listOf(NormalGradientStart, NormalGradientEnd))
     }
 
-    val missed = isCallMissed(isIncoming, durationSeconds)
-    val statusWord = if (missed) stringResource(R.string.call_status_missed) else stringResource(R.string.call_status_ended)
+    val statusWord = stringResource(callStatusWord(isIncoming, durationSeconds, wasDeclined))
     val statusLine = stringResource(R.string.call_ended_status_line, statusWord, formatRelativeShort(endedAtMillis))
     val titleLine = when {
         isSpam -> spamMark!!.category.displayLabel()

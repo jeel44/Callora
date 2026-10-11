@@ -60,6 +60,12 @@ data class CallSummary(
     // False only when the call ended before its contact lookup settled — consumers (see
     // MissedCallNotifier) then resolve it themselves instead of trusting a null [displayName].
     val isContactResolved: Boolean = true,
+    // True only when the user actively declined this call in-app (reject()/rejectWithMessage()/
+    // rejectForSmsCompose()) — build-2 QA #16: a declined call was previously indistinguishable
+    // from one that simply rang out, so it got the same "Missed call" label and missed-call
+    // notification as a genuinely unanswered call. A real phone app treats "I declined this" and
+    // "I never saw this" as different outcomes.
+    val wasDeclined: Boolean = false,
 )
 
 /** The app-wide "there's an outgoing call in progress" fact — non-null for any of
@@ -129,6 +135,10 @@ object CallRepository {
     // Set by [rejectForSmsCompose] — the post-call popup would otherwise land on top of the SMS
     // composer that Incoming Call's "write your own" reply opens right as the call ends.
     private var suppressPostCallPopup: Boolean = false
+
+    // Set by reject()/rejectWithMessage()/rejectForSmsCompose() — see CallSummary.wasDeclined.
+    // Reset per-call in onCallAdded/reset, same as suppressPostCallPopup.
+    private var wasDeclinedByUser: Boolean = false
 
     // Telecom's own quick-reply texts for the ringing call (Call.getCannedTextResponses), loaded
     // asynchronously by the system — only for calls with CAPABILITY_RESPOND_VIA_TEXT.
@@ -225,6 +235,7 @@ object CallRepository {
         trackedCallIsIncoming = false
         trackedCallSimAccount = null
         suppressPostCallPopup = false
+        wasDeclinedByUser = false
         _quickReplies.value = emptyList()
         _callState.value = emptyState()
         _activeCallUiState.value = null
@@ -258,6 +269,7 @@ object CallRepository {
         // InCallServiceImpl.onCreate(), strictly before the system can ever deliver a Call here.
         trackedCallSimAccount = appContext?.let { resolveAccount(it, call.details?.accountHandle) }
         suppressPostCallPopup = false
+        wasDeclinedByUser = false
         _quickReplies.value = call.cannedTextResponses.orEmpty()
         call.registerCallback(callback)
         applyCallState(call, call.state)
@@ -275,6 +287,7 @@ object CallRepository {
             displayName = info.displayName,
             durationSeconds = durationSeconds,
             isContactResolved = !info.isResolvingContactName,
+            wasDeclined = wasDeclinedByUser,
         )
         _lastCallSummary.value = summary
 
@@ -319,6 +332,7 @@ object CallRepository {
 
     /** Real Call.reject() — used by the Incoming Call screen's Decline button. */
     fun reject() {
+        wasDeclinedByUser = true
         trackedCall?.reject(false, null)
     }
 
@@ -331,6 +345,7 @@ object CallRepository {
      * default SMS app's respond-via-message service — no SEND_SMS permission and no unlock needed,
      * which is why Incoming Call's quick replies and "Urgent?" go through here. */
     fun rejectWithMessage(text: String) {
+        wasDeclinedByUser = true
         trackedCall?.reject(true, text)
     }
 
@@ -339,6 +354,7 @@ object CallRepository {
     fun rejectForSmsCompose() {
         val call = trackedCall ?: return
         suppressPostCallPopup = true
+        wasDeclinedByUser = true
         call.reject(false, null)
     }
 

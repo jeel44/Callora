@@ -106,6 +106,7 @@
     <string name="spam_report_report_spam">Report spam</string>
     <string name="call_status_ended">Call ended</string>
     <string name="call_status_missed">Missed call</string>
+    <string name="call_status_declined">Declined</string>
 
     <!-- Spam categories -->
     <string name="spam_category_telemarketing">Telemarketing</string>

@@ -82,6 +82,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.Permissi
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPromptCard
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SwipeActionRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import kotlinx.coroutines.launch
 
 @Composable
@@ -280,7 +281,7 @@ fun HomeScreen(
                                         enabled = call.phoneNumber.isNotBlank(),
                                         onCall = onRowCall,
                                         onMessage = {
-                                            context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${call.phoneNumber}")))
+                                            context.startExternalActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${call.phoneNumber}")))
                                         },
                                         shape = RectangleShape,
                                     ) {

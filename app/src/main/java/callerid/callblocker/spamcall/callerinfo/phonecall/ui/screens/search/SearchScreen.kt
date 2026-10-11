@@ -1,6 +1,8 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.search
 
 import android.Manifest
+import android.content.Intent
+import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,9 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -45,10 +50,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -59,6 +66,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.Permissi
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 
 @Composable
@@ -70,6 +78,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var queryField by remember { mutableStateOf(TextFieldValue(uiState.query)) }
+    val context = LocalContext.current
 
     // No popup here — the contacts permission popup only ever shows once per install, owned by
     // the Contacts screen (AllContactsScreen). This is a plain direct runtime-permission request
@@ -165,9 +174,19 @@ fun SearchScreen(
                             icon = Icons.Filled.PersonSearch,
                             message = stringResource(R.string.search_empty_prompt),
                         )
-                        uiState.results.isEmpty() -> SearchEmptyState(
-                            icon = Icons.Filled.PersonSearch,
-                            message = stringResource(R.string.contacts_no_matches, uiState.query),
+                        // Build-2 QA #14: searching a number nobody has saved (even one already
+                        // visible in call history/Spam Center) used to just say "No matches" with
+                        // no way forward. Now that call-log numbers are included in the search
+                        // above (see SearchViewModel), a still-empty result means truly nothing
+                        // anywhere knows this number — so this is the "No info found / Add to
+                        // contacts" state the report expected but never saw.
+                        uiState.results.isEmpty() -> NoInfoFoundState(
+                            query = uiState.query,
+                            onAddToContacts = {
+                                val intent = Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI)
+                                    .putExtra(ContactsContract.Intents.Insert.PHONE, uiState.query)
+                                context.startExternalActivity(intent)
+                            },
                         )
                         else -> {
                             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -209,6 +228,54 @@ private fun SearchEmptyState(icon: androidx.compose.ui.graphics.vector.ImageVect
             color = MaterialTheme.extendedColors.onSurfaceFaint,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+/** Mirrors [callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.noresults.NoResultsScreen]'s
+ * copy/layout inline, since Search already owns its own Scaffold/back-arrow header — this is the
+ * same "no info found" state the report expected to see for a number nobody has saved or called,
+ * just without a second navigation hop, and with a real Add-to-contacts action instead of a stub. */
+@Composable
+private fun NoInfoFoundState(query: String, onAddToContacts: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.PersonSearch,
+            contentDescription = null,
+            tint = MaterialTheme.extendedColors.onSurfaceFaint,
+            modifier = Modifier.size(52.dp),
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = stringResource(R.string.no_results_title),
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.no_results_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.extendedColors.onSurfaceFaint,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 280.dp),
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        // Only a phone number can be handed to the contact editor's PHONE extra — a name-only
+        // query (no digits) has nothing to prefill, so the button is left out rather than opening
+        // a blank "new contact" editor that has nothing to do with what was searched.
+        if (query.any { it.isDigit() }) {
+            OutlinedButton(
+                onClick = onAddToContacts,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            ) {
+                Text(text = stringResource(R.string.no_results_add_to_contacts))
+            }
+        }
     }
 }
 

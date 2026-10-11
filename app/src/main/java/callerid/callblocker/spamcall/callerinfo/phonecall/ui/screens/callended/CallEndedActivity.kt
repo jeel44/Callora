@@ -76,6 +76,7 @@ class CallEndedActivity : AppCompatActivity() {
         val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
         val durationSeconds = intent.getLongExtra(EXTRA_DURATION_SECONDS, 0L)
         val endedAtMillis = intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis())
+        val wasDeclined = intent.getBooleanExtra(EXTRA_WAS_DECLINED, false)
 
         setContent {
             CalloraTheme(darkTheme = ThemeState.isDarkMode) {
@@ -83,6 +84,7 @@ class CallEndedActivity : AppCompatActivity() {
                     phoneNumber = phoneNumber,
                     isIncoming = isIncoming,
                     durationSeconds = durationSeconds,
+                    wasDeclined = wasDeclined,
                     endedAtMillis = endedAtMillis,
                     onDismiss = { finish() },
                     onOpenContactDetail = { number ->
@@ -113,6 +115,8 @@ class CallEndedActivity : AppCompatActivity() {
             "callerid.callblocker.spamcall.callerinfo.phonecall.EXTRA_CALL_ENDED_DURATION_SECONDS"
         private const val EXTRA_ENDED_AT_MILLIS =
             "callerid.callblocker.spamcall.callerinfo.phonecall.EXTRA_CALL_ENDED_AT_MILLIS"
+        private const val EXTRA_WAS_DECLINED =
+            "callerid.callblocker.spamcall.callerinfo.phonecall.EXTRA_CALL_ENDED_WAS_DECLINED"
 
         /** Called from [callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository.onCallEnded]
          * via InCallServiceImpl — [context] is a Service context there, hence FLAG_ACTIVITY_NEW_TASK.
@@ -125,6 +129,7 @@ class CallEndedActivity : AppCompatActivity() {
                 putExtra(EXTRA_IS_INCOMING, isIncoming)
                 putExtra(EXTRA_DURATION_SECONDS, summary.durationSeconds)
                 putExtra(EXTRA_ENDED_AT_MILLIS, endedAtMillis)
+                putExtra(EXTRA_WAS_DECLINED, summary.wasDeclined)
             }
             context.startActivity(intent)
         }

@@ -92,6 +92,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.Permissi
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SwipeActionRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -647,7 +648,7 @@ private fun AllContactRow(contact: Contact, onClick: () -> Unit, onCall: () -> U
         enabled = contact.phoneNumber.isNotBlank(),
         onCall = onCall,
         onMessage = {
-            context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${contact.phoneNumber}")))
+            context.startExternalActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${contact.phoneNumber}")))
         },
     ) {
         Row(
