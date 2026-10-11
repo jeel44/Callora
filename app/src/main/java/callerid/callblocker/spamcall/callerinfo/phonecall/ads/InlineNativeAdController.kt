@@ -61,10 +61,21 @@ class InlineNativeAdController(
     private var isCleared = false
 
     /** Resolves the placement flag, then loads the first ad (whether or not the slot is visible
-     * yet — it's a preload). Call once, from the ViewModel's init. */
-    fun start() {
-        if (isStarted) return
+     * yet — it's a preload). Call once, from the ViewModel's init. A non-null [preloadedAd]
+     * (already loaded, placement already checked) is shown as the first ad instead — no request,
+     * no shimmer; this controller then owns it. Refreshes work the same either way. */
+    fun start(preloadedAd: NativeAd? = null) {
+        if (isStarted) {
+            preloadedAd?.destroy()
+            return
+        }
         isStarted = true
+        if (preloadedAd != null) {
+            Log.d(logTag, "Showing preloaded native ad, skipping the initial request")
+            isEnabled = true
+            _state.value = NativeAdSlotState.Loaded(preloadedAd)
+            return
+        }
         scope.launch {
             isEnabled = awaitAdPlacementEnabled(isPlacementEnabled)
             if (isEnabled) load(reason = "initial")

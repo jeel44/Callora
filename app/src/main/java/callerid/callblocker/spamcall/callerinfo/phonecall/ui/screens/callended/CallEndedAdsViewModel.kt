@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.InlineNativeAdController
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.NativeAdPreloadManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
 
 private const val TAG = "CallEndedAds"
@@ -25,7 +26,11 @@ class CallEndedAdsViewModel(application: Application) : AndroidViewModel(applica
     )
 
     init {
-        nativeAdController.start()
+        // Preloaded during the call by NativeAdPreloadManager when it finished in time; otherwise
+        // null and the controller makes today's live request (shimmer, fail-open).
+        val preloadedAd = NativeAdPreloadManager.consumePreloadedAd()
+        nativeAdController.start(preloadedAd)
+        if (preloadedAd != null) NativeAdPreloadManager.preload(reason = "after consume")
     }
 
     override fun onCleared() {
