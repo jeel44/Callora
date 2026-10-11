@@ -251,12 +251,8 @@
 
     <!-- Notifications screen (shared top-bar title with notification settings) -->
     <string name="notifications_title">알림</string>
-    <string name="notifications_sample_spam_blocked">오늘 스팸 전화 3건 차단됨</string>
-    <string name="notifications_sample_weekly_summary">주간 보호 요약이 준비되었습니다</string>
-    <string name="notifications_sample_db_updated">스팸 데이터베이스 업데이트됨</string>
-    <string name="notifications_sample_time_2h_ago">2시간 전</string>
-    <string name="notifications_sample_time_1d_ago">1일 전</string>
-    <string name="notifications_sample_time_2d_ago">2일 전</string>
+    <string name="notifications_spam_blocked_title">스팸 전화 차단됨: %1$s</string>
+    <string name="notifications_empty">아직 스팸 또는 차단된 전화가 없습니다.</string>
 
     <!-- Notification settings screen -->
     <string name="notification_settings_missed_calls">부재중 전화</string>

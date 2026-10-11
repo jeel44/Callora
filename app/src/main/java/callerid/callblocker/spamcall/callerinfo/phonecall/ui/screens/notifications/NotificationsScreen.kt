@@ -1,5 +1,6 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.notifications
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Report
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,48 +27,30 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 
-private data class NotificationEntry(
-    val icon: ImageVector,
-    val iconColor: @Composable () -> Color,
-    val title: String,
-    val timestamp: String,
-)
-
-/** UI-only notifications screen — rows below are static hardcoded sample data. */
+/** Real notifications screen — every row is a spam/blocked call actually found in the device's
+ * call log (see [NotificationsViewModel]), not sample data. Shows an empty state rather than
+ * ever fabricating a row, since no "weekly summary" or "database updated" feature exists to
+ * report on honestly. */
 @Composable
-fun NotificationsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
-    val notifications = listOf(
-        NotificationEntry(
-            icon = Icons.Filled.Report,
-            iconColor = { MaterialTheme.extendedColors.spam },
-            title = stringResource(R.string.notifications_sample_spam_blocked),
-            timestamp = stringResource(R.string.notifications_sample_time_2h_ago),
-        ),
-        NotificationEntry(
-            icon = Icons.Filled.Shield,
-            iconColor = { MaterialTheme.extendedColors.success },
-            title = stringResource(R.string.notifications_sample_weekly_summary),
-            timestamp = stringResource(R.string.notifications_sample_time_1d_ago),
-        ),
-        NotificationEntry(
-            icon = Icons.Filled.Update,
-            iconColor = { MaterialTheme.colorScheme.primary },
-            title = stringResource(R.string.notifications_sample_db_updated),
-            timestamp = stringResource(R.string.notifications_sample_time_2d_ago),
-        ),
-    )
+fun NotificationsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: NotificationsViewModel = viewModel(),
+) {
+    val notifications by viewModel.notifications.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -81,14 +62,26 @@ fun NotificationsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         Column(modifier = Modifier.fillMaxSize()) {
             NotificationsTopBar(onBack = onBack)
             Box(modifier = Modifier.weight(1f)) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(notifications) { entry -> NotificationRow(entry = entry) }
+                when {
+                    notifications == null -> Unit // first load still in flight — nothing to show yet
+                    notifications!!.isEmpty() -> Text(
+                        text = stringResource(R.string.notifications_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.extendedColors.mutedText,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(innerPadding)
+                            .padding(horizontal = 20.dp, vertical = 24.dp),
+                    )
+                    else -> LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(notifications!!, key = { it.id }) { entry -> NotificationRow(entry = entry) }
+                    }
                 }
             }
         }
@@ -121,7 +114,7 @@ private fun NotificationsTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun NotificationRow(entry: NotificationEntry) {
+private fun NotificationRow(entry: SpamBlockedNotification) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,20 +124,27 @@ private fun NotificationRow(entry: NotificationEntry) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = entry.icon,
+            imageVector = Icons.Filled.Report,
             contentDescription = null,
-            tint = entry.iconColor(),
+            tint = MaterialTheme.extendedColors.spam,
             modifier = Modifier.size(22.dp),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = entry.title,
+                text = stringResource(
+                    R.string.notifications_spam_blocked_title,
+                    entry.displayName ?: entry.formattedPhoneNumber,
+                ),
                 style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = entry.timestamp,
+                text = DateUtils.getRelativeTimeSpanString(
+                    entry.timestampMillis,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS,
+                ).toString(),
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
                 color = MaterialTheme.extendedColors.onSurfaceFaint,
             )

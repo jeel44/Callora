@@ -253,12 +253,8 @@
 
     <!-- Notifications screen (shared top-bar title with notification settings) -->
     <string name="notifications_title">Benachrichtigungen</string>
-    <string name="notifications_sample_spam_blocked">3 Spam-Anrufe heute blockiert</string>
-    <string name="notifications_sample_weekly_summary">Wöchentliche Schutzübersicht bereit</string>
-    <string name="notifications_sample_db_updated">Spam-Datenbank aktualisiert</string>
-    <string name="notifications_sample_time_2h_ago">vor 2 Std.</string>
-    <string name="notifications_sample_time_1d_ago">vor 1 Tag</string>
-    <string name="notifications_sample_time_2d_ago">vor 2 Tagen</string>
+    <string name="notifications_spam_blocked_title">Spam-Anruf blockiert: %1$s</string>
+    <string name="notifications_empty">Noch keine Spam- oder blockierten Anrufe.</string>
 
     <!-- Notification settings screen -->
     <string name="notification_settings_missed_calls">Verpasste Anrufe</string>

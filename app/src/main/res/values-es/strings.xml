@@ -253,12 +253,8 @@
 
     <!-- Notifications screen (shared top-bar title with notification settings) -->
     <string name="notifications_title">Notificaciones</string>
-    <string name="notifications_sample_spam_blocked">3 llamadas de spam bloqueadas hoy</string>
-    <string name="notifications_sample_weekly_summary">Resumen semanal de protección listo</string>
-    <string name="notifications_sample_db_updated">Base de datos de spam actualizada</string>
-    <string name="notifications_sample_time_2h_ago">hace 2h</string>
-    <string name="notifications_sample_time_1d_ago">hace 1d</string>
-    <string name="notifications_sample_time_2d_ago">hace 2d</string>
+    <string name="notifications_spam_blocked_title">Llamada de spam bloqueada: %1$s</string>
+    <string name="notifications_empty">Aún no hay llamadas de spam o bloqueadas.</string>
 
     <!-- Notification settings screen -->
     <string name="notification_settings_missed_calls">Llamadas perdidas</string>

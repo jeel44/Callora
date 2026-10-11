@@ -83,6 +83,8 @@ fun SpamCenterScreen(
     viewModel: SpamCenterViewModel = viewModel(),
 ) {
     val blockedCount by viewModel.blockedCount.collectAsState()
+    val blockedThisWeekCount by viewModel.blockedThisWeekCount.collectAsState()
+    val blockedAllTimeCount by viewModel.blockedAllTimeCount.collectAsState()
     val spamCalls by viewModel.spamCalls.collectAsState()
 
     // The blocked count can change on the blocked_list screen (unblocking) or block_confirm
@@ -113,7 +115,12 @@ fun SpamCenterScreen(
                         .padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(ItemGap),
                 ) {
-                    item { StatsCard() }
+                    item {
+                        StatsCard(
+                            blockedThisWeek = blockedThisWeekCount,
+                            blockedAllTime = blockedAllTimeCount,
+                        )
+                    }
                     item { Spacer(modifier = Modifier.height(8.dp)) }
                     item {
                         Text(
@@ -201,7 +208,7 @@ private fun SpamCenterTopBar(onClose: () -> Unit) {
 }
 
 @Composable
-private fun StatsCard() {
+private fun StatsCard(blockedThisWeek: Int?, blockedAllTime: Int?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,12 +218,13 @@ private fun StatsCard() {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         StatBlock(
-            value = "18",
+            // "–" while the call-log scan is still running, never a flash of 0 that then jumps.
+            value = blockedThisWeek?.toString() ?: "–",
             label = stringResource(R.string.spam_center_stat_blocked_week),
             valueColor = MaterialTheme.extendedColors.spam,
         )
         StatBlock(
-            value = "142",
+            value = blockedAllTime?.toString() ?: "–",
             label = stringResource(R.string.spam_center_stat_blocked_alltime),
             valueColor = MaterialTheme.colorScheme.onSurface,
         )

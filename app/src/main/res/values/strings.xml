@@ -257,12 +257,8 @@
 
     <!-- Notifications screen (shared top-bar title with notification settings) -->
     <string name="notifications_title">Notifications</string>
-    <string name="notifications_sample_spam_blocked">3 spam calls blocked today</string>
-    <string name="notifications_sample_weekly_summary">Weekly protection summary ready</string>
-    <string name="notifications_sample_db_updated">Spam database updated</string>
-    <string name="notifications_sample_time_2h_ago">2h ago</string>
-    <string name="notifications_sample_time_1d_ago">1d ago</string>
-    <string name="notifications_sample_time_2d_ago">2d ago</string>
+    <string name="notifications_spam_blocked_title">Spam call blocked: %1$s</string>
+    <string name="notifications_empty">No spam or blocked calls yet.</string>
 
     <!-- Notification settings screen -->
     <string name="notification_settings_missed_calls">Missed calls</string>

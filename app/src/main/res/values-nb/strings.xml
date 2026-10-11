@@ -253,12 +253,8 @@
 
     <!-- Notifications screen (shared top-bar title with notification settings) -->
     <string name="notifications_title">Varsler</string>
-    <string name="notifications_sample_spam_blocked">3 spamanrop blokkert i dag</string>
-    <string name="notifications_sample_weekly_summary">Ukentlig beskyttelsessammendrag er klart</string>
-    <string name="notifications_sample_db_updated">Spamdatabase oppdatert</string>
-    <string name="notifications_sample_time_2h_ago">2t siden</string>
-    <string name="notifications_sample_time_1d_ago">1d siden</string>
-    <string name="notifications_sample_time_2d_ago">2d siden</string>
+    <string name="notifications_spam_blocked_title">Spamanrop blokkert: %1$s</string>
+    <string name="notifications_empty">Ingen spam- eller blokkerte anrop ennå.</string>
 
     <!-- Notification settings screen -->
     <string name="notification_settings_missed_calls">Tapte anrop</string>
