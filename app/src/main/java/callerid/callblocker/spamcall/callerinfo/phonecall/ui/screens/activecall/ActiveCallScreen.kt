@@ -152,12 +152,9 @@ fun ActiveCallScreen(
     val displayName = callInfo.displayName
     val videoCallLabel = stringResource(R.string.active_call_video_call_label)
     val videoUnsupportedText = stringResource(R.string.call_feature_unsupported_toast, videoCallLabel)
-    val holdUnsupportedText = stringResource(
-        R.string.call_feature_unsupported_toast,
-        stringResource(R.string.active_call_hold_label),
-    )
-    // No video-upgrade or hold control exists in CallRepository (it only exposes mute/speaker/
-    // DTMF/disconnect) — both surface an honest toast rather than inventing call-control logic.
+    // No video-upgrade exists anywhere in this app (CallRepository only exposes mute/speaker/
+    // DTMF/disconnect/hold) — surfaces an honest toast rather than inventing video-call logic.
+    // Hold is real now (see CallRepository.hold()/unhold(), wired below) - no longer a stub.
     fun showVideoUnsupportedToast() = Toast.makeText(context, videoUnsupportedText, Toast.LENGTH_SHORT).show()
     val headerInteractionSource = remember { MutableInteractionSource() }
 
@@ -316,8 +313,14 @@ fun ActiveCallScreen(
             },
             onHold = {
                 showMoreSheet = false
-                Toast.makeText(context, holdUnsupportedText, Toast.LENGTH_SHORT).show()
+                // Previously a toast-only stub (build-2 QA #10: "Hold does not change the call
+                // state"); now real Call.hold()/unhold(). If the carrier/call genuinely doesn't
+                // support it, Telecom just never transitions to STATE_HOLDING and isOnHold stays
+                // false - no separate "unsupported" messaging needed, same as a plain button
+                // press that doesn't do anything would read on a real phone app.
+                viewModel.toggleHold(callInfo.isOnHold)
             },
+            isOnHold = callInfo.isOnHold,
         )
     }
 

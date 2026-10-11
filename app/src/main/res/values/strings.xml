@@ -349,6 +349,7 @@
     <string name="incoming_quick_reply_write_own">Write your own…</string>
     <string name="active_call_video_call_label">Video call</string>
     <string name="active_call_hold_label">Hold</string>
+    <string name="active_call_resume_label">Resume</string>
     <string name="call_more_sheet_title">More</string>
     <string name="call_more_sheet_close_content_description">Close</string>
     <string name="call_feature_unsupported_toast">%1$s isn\'t supported yet</string>

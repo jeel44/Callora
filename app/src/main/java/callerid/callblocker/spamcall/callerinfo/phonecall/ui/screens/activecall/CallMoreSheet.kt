@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddIcCall
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +48,7 @@ fun CallMoreSheet(
     onAddCall: () -> Unit,
     onVideoCall: () -> Unit,
     onHold: () -> Unit,
+    isOnHold: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     ModalBottomSheet(
@@ -101,8 +103,10 @@ fun CallMoreSheet(
             )
             MoreSheetDivider()
             MoreSheetRow(
-                icon = Icons.Filled.Pause,
-                label = stringResource(R.string.active_call_hold_label),
+                icon = if (isOnHold) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                label = stringResource(
+                    if (isOnHold) R.string.active_call_resume_label else R.string.active_call_hold_label,
+                ),
                 onClick = onHold,
             )
         }

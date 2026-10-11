@@ -45,6 +45,8 @@ data class ActiveCallInfo(
     // That SIM's color (ARGB) — the system's own per-SIM tint where available, see
     // PhoneAccounts.getCallCapableAccounts. Non-null exactly when [simAccountLabel] is.
     val simAccountColor: Int? = null,
+    // Real Call.STATE_HOLDING, not a UI-only flag - see CallRepository.hold()/unhold().
+    val isOnHold: Boolean = false,
 )
 
 /** [displayName] is a snapshot of [ActiveCallInfo.displayName] taken at the moment the call is
@@ -298,6 +300,18 @@ object CallRepository {
         trackedCall?.disconnect()
     }
 
+    /** Real Call.hold()/unhold() — used by Active Call's Hold button, previously a toast-only
+     * stub (build-2 QA #10). No-op if the carrier/call doesn't actually support hold
+     * (CAPABILITY_HOLD) — Telecom itself just won't transition to STATE_HOLDING, so
+     * [ActiveCallInfo.isOnHold] simply never flips and the button stays showing "Hold". */
+    fun hold() {
+        trackedCall?.hold()
+    }
+
+    fun unhold() {
+        trackedCall?.unhold()
+    }
+
     /** Real Call.answer() — used by the Incoming Call screen's Answer button. */
     fun answer() {
         trackedCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
@@ -334,10 +348,14 @@ object CallRepository {
         val uiState = when (state) {
             Call.STATE_CONNECTING, Call.STATE_DIALING, Call.STATE_SELECT_PHONE_ACCOUNT -> CallUiState.DIALING
             Call.STATE_RINGING, Call.STATE_SIMULATED_RINGING -> CallUiState.RINGING
-            Call.STATE_ACTIVE -> CallUiState.ACTIVE
+            // A held call is still conceptually "active" (same screen, same controls) - only
+            // isOnHold below changes. Real hold (see hold()/unhold()) was previously a toast-only
+            // stub (build-2 QA #10: "Hold does not change the call state").
+            Call.STATE_ACTIVE, Call.STATE_HOLDING -> CallUiState.ACTIVE
             Call.STATE_DISCONNECTED, Call.STATE_DISCONNECTING -> CallUiState.DISCONNECTED
             else -> previous.state
         }
+        val isOnHold = state == Call.STATE_HOLDING
         val resolvedNumber = number ?: previous.phoneNumber
         val connectTimestamp = if (uiState == CallUiState.ACTIVE) {
             previous.connectTimestampMillis ?: System.currentTimeMillis()
@@ -368,6 +386,7 @@ object CallRepository {
             },
             simAccountLabel = trackedCallSimAccount?.label,
             simAccountColor = trackedCallSimAccount?.color,
+            isOnHold = isOnHold,
         )
         if (_callState.value.isResolvingContactName && resolvedNumber != null) resolveDisplayName(resolvedNumber)
         updateActiveCallUiState(uiState, resolvedNumber, connectTimestamp)

@@ -56,6 +56,11 @@ class ActiveCallViewModel(application: Application) : AndroidViewModel(applicati
         CallRepository.setMuted(muted)
     }
 
+    /** Real Call.hold()/unhold() — see CallRepository's own doc. */
+    fun toggleHold(currentlyOnHold: Boolean) {
+        if (currentlyOnHold) CallRepository.unhold() else CallRepository.hold()
+    }
+
     /** Real InCallService.setAudioRoute — same underlying call as Outgoing Dialing's Speaker button. */
     fun setSpeakerEnabled(enabled: Boolean) {
         CallRepository.setSpeakerEnabled(enabled)

@@ -4,6 +4,7 @@ import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -109,6 +111,12 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
 
     if (roleAlreadyHeld) return
 
+    // This screen has no back-stack entry below it on a cold start (it's the onboarding start
+    // destination until the role is held), so without this the system Back gesture/button would
+    // finish the Activity and exit the app entirely instead of just skipping the pitch — same
+    // "always move forward" rule the role-request launcher callback above already follows.
+    BackHandler { onContinue() }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -123,6 +131,7 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
 
         SetDefaultContentCard(
             onSetDefaultClick = { requestDialerRole(context, roleRequestLauncher, onUnavailable = onContinue) },
+            onSkipClick = onContinue,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(ContentCardHeightFraction)
@@ -291,7 +300,11 @@ private fun MockBadge(text: String, tintColor: Color) {
 /** Light content card overlapping the dark hero, holding the pitch copy, feature list, and
  * the CTA that actually requests the DIALER role. */
 @Composable
-private fun SetDefaultContentCard(onSetDefaultClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SetDefaultContentCard(
+    onSetDefaultClick: () -> Unit,
+    onSkipClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .shadow(elevation = 16.dp, shape = ContentCardTopCorner)
@@ -327,8 +340,7 @@ private fun SetDefaultContentCard(onSetDefaultClick: () -> Unit, modifier: Modif
         Button(
             onClick = onSetDefaultClick,
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
+                .fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = SetDefaultInk,
@@ -340,6 +352,23 @@ private fun SetDefaultContentCard(onSetDefaultClick: () -> Unit, modifier: Modif
                 text = stringResource(R.string.blocked_list_set_as_default),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+            )
+        }
+
+        // The report's whole complaint was that this screen was a dead end with no way past it
+        // short of the system dialog — this is the explicit skip path, same "move forward
+        // regardless" outcome as declining the RoleManager sheet itself.
+        TextButton(
+            onClick = onSkipClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+        ) {
+            Text(
+                text = stringResource(R.string.permission_not_now),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = SetDefaultMutedGray,
             )
         }
     }
