@@ -211,7 +211,7 @@
     <string name="block_confirm_title">Bloquer ce numéro ?</string>
     <string name="block_confirm_subtitle">Vous ne recevrez plus d\'appels ni de messages de ce numéro.</string>
     <string name="block_confirm_button">Bloquer le numéro</string>
-    <string name="block_confirm_failed_not_default">Blocage impossible : définissez d'abord Caller ID comme application téléphonique par défaut</string>
+    <string name="block_confirm_failed_not_default">Blocage impossible : définissez d\'abord Caller ID comme application téléphonique par défaut</string>
 
     <!-- Spam center screen -->
     <string name="spam_center_title">Centre anti-spam</string>
