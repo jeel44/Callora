@@ -520,7 +520,6 @@ private fun CalloraNavHostContent(
                 onOpenNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onOpenSearch = { navController.navigate(Routes.SEARCH) },
                 // TODO: no filter destination/sheet exists yet — wire one up here once designed.
-                onOpenFilter = {},
                 onOpenContactDetail = { phoneNumber ->
                     navController.navigate(Routes.contactDetailRoute(phoneNumber))
                 },

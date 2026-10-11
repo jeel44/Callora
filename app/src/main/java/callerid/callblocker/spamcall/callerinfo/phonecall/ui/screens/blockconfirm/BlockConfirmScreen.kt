@@ -1,5 +1,6 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.blockconfirm
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,8 +36,10 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColor
 /**
  * Bottom-anchored confirmation "sheet" over a dimmed scrim — reached from either contact_detail
  * variant's Block action. Confirming actually inserts into BlockedNumberContract via
- * [BlockConfirmViewModel]; whether or not that succeeds (it needs canCurrentUserBlockNumbers()),
- * onboarding-style navigation still always proceeds back afterward.
+ * [BlockConfirmViewModel]. Navigation always proceeds back afterward either way (still an
+ * onboarding-style sheet, not a form to retry), but a failed block (not holding ROLE_DIALER) now
+ * surfaces a real Toast instead of leaving the "you won't receive calls or texts" promise above
+ * standing uncontradicted (build-2 QA #8).
  */
 @Composable
 fun BlockConfirmScreen(
@@ -44,6 +48,8 @@ fun BlockConfirmScreen(
     modifier: Modifier = Modifier,
     viewModel: BlockConfirmViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+    val blockFailedMessage = stringResource(R.string.block_confirm_failed_not_default)
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -89,7 +95,14 @@ fun BlockConfirmScreen(
             Spacer(modifier = Modifier.height(22.dp))
 
             Button(
-                onClick = { viewModel.blockNumber(onComplete = onBlockConfirmed) },
+                onClick = {
+                    viewModel.blockNumber { succeeded ->
+                        if (!succeeded) {
+                            Toast.makeText(context, blockFailedMessage, Toast.LENGTH_LONG).show()
+                        }
+                        onBlockConfirmed()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

@@ -83,6 +83,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsChangeSignal
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptKind
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
@@ -131,7 +132,12 @@ fun AllContactsScreen(
                 val hadPermission = viewModel.uiState.value.hasContactsPermission
                 viewModel.checkPermission()
                 val hasPermission = viewModel.uiState.value.hasContactsPermission
-                if (lazyPagingItems.itemCount == 0 || (hasPermission && !hadPermission)) {
+                // ContactsChangeSignal: set by Contact Detail on a successful delete (build-2 QA
+                // #11) - a real reason to refresh, same as the two existing ones below, without
+                // going back to refreshing on every trivial resume.
+                val changedElsewhere = ContactsChangeSignal.pendingRefresh
+                if (lazyPagingItems.itemCount == 0 || (hasPermission && !hadPermission) || changedElsewhere) {
+                    ContactsChangeSignal.pendingRefresh = false
                     lazyPagingItems.refresh()
                 }
             }

@@ -153,6 +153,12 @@ fun ContactDetailScreen(
     val onWhatsApp: () -> Unit = {
         if (!openWhatsAppChat(context, uiState.phoneNumber)) viewModel.onWhatsAppUnavailable()
     }
+    // No video-call support exists anywhere in the app (ActiveCallScreen's own Video button just
+    // shows an "unsupported" toast) — this used to silently place a normal voice call instead,
+    // indistinguishable from tapping Call, with no indication video wasn't actually used
+    // (build-2 QA N2: "WhatsApp and Video buttons do nothing"). Now gives the same honest
+    // unavailable feedback WhatsApp already gets, rather than disguising it as a real call.
+    val onVideo: () -> Unit = { viewModel.onVideoCallUnavailable() }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.snackbarMessage) {
@@ -269,10 +275,7 @@ fun ContactDetailScreen(
                             onCall = onCall,
                             onMessage = onMessage,
                             onWhatsApp = onWhatsApp,
-                            // No video-call support exists anywhere in the app yet (ActiveCallScreen's
-                            // Video button only shows an "unsupported" toast), so this places a normal
-                            // call for now.
-                            onVideo = onCall,
+                            onVideo = onVideo,
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))

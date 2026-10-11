@@ -11,6 +11,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.Contac
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.RecentCallsSnapshot
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.RecentCallsSnapshotStore
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,9 @@ data class HomeUiState(
     val isRestoringSnapshot: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMoreCalls: Boolean = true,
+    // Home's Filter button (build-2 QA N3: previously a no-op). Client-side only — filters what's
+    // already loaded rather than changing what's fetched, same as spam-call hiding below.
+    val missedOnly: Boolean = false,
 )
 
 /** One row of Home's call list as drawn: a day header, or a run of consecutive calls with the
@@ -72,9 +76,10 @@ sealed interface HomeListItem {
  * "newest known call" check and the snapshot all depend on it mirroring the call log, and
  * unmarking a number brings its calls straight back without a reload.
  */
-internal fun buildHomeListItems(calls: List<RecentCallEntry>): List<HomeListItem> {
+internal fun buildHomeListItems(calls: List<RecentCallEntry>, missedOnly: Boolean = false): List<HomeListItem> {
     val zone = ZoneId.systemDefault()
     val items = mutableListOf<HomeListItem>()
+    val calls = if (missedOnly) calls.filter { it.callType == CallType.MISSED } else calls
     var currentDay: Long? = null
     var currentGroup = mutableListOf<RecentCallEntry>()
     var isFirstInDay = true
@@ -205,10 +210,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     // last-known list instead of an empty one.
     /** What HomeScreen's list actually draws — see [buildHomeListItems]. */
     val listItems: StateFlow<List<HomeListItem>> = _uiState
-        .map { buildHomeListItems(it.recentCalls) }
+        .map { buildHomeListItems(it.recentCalls, it.missedOnly) }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, buildHomeListItems(_uiState.value.recentCalls))
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            buildHomeListItems(_uiState.value.recentCalls, _uiState.value.missedOnly),
+        )
+
+    /** Home's Filter button (build-2 QA N3). */
+    fun onMissedOnlyFilterChanged(missedOnly: Boolean) {
+        _uiState.value = _uiState.value.copy(missedOnly = missedOnly)
+    }
 
     /**
      * Marking/unmarking a number as spam anywhere in the app (e.g. Contact Detail's overflow

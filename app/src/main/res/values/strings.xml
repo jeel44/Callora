@@ -37,6 +37,8 @@
     <string name="home_recent_section_title">RECENT</string>
     <string name="home_title">Recent</string>
     <string name="home_filter_content_description">Filter</string>
+    <string name="home_filter_all_calls">All calls</string>
+    <string name="home_filter_missed_calls">Missed calls</string>
     <string name="home_search_content_description">Search</string>
     <string name="home_call_log_permission_message">Grant contacts &amp; call log access to see your recent calls.</string>
     <string name="home_no_recent_calls">No recent calls yet.</string>
@@ -183,6 +185,7 @@
     <string name="contact_detail_recent_title">RECENT</string>
     <string name="contact_detail_block_report_spam">Block &amp; Report Spam</string>
     <string name="contact_detail_whatsapp_not_installed">WhatsApp is not installed</string>
+    <string name="contact_detail_video_not_supported">Video calling isn\'t supported yet</string>
     <string name="contact_detail_add_to_contacts">Add to contacts</string>
     <string name="contact_detail_spam_marked_you">You marked this as spam</string>
     <string name="contact_detail_undo">Undo</string>
@@ -219,6 +222,7 @@
     <string name="block_confirm_title">Block this number?</string>
     <string name="block_confirm_subtitle">You won\'t receive calls or texts from this number again.</string>
     <string name="block_confirm_button">Block number</string>
+    <string name="block_confirm_failed_not_default">Couldn\'t block — set Caller ID as your default phone app first</string>
 
     <!-- Spam center screen -->
     <string name="spam_center_title">Spam Center</string>

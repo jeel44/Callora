@@ -48,8 +48,14 @@ class BlockedNumbersRepository {
                 val e164Index = cursor.getColumnIndex(BlockedNumberContract.BlockedNumbers.COLUMN_E164_NUMBER)
                 val originalIndex = cursor.getColumnIndex(BlockedNumberContract.BlockedNumbers.COLUMN_ORIGINAL_NUMBER)
                 while (cursor.moveToNext()) {
-                    val number = (if (e164Index >= 0) cursor.getString(e164Index) else null)
-                        ?: (if (originalIndex >= 0) cursor.getString(originalIndex) else null)
+                    // COLUMN_E164_NUMBER can come back as "" (not null) when the provider
+                    // couldn't normalize a number — no country code, ambiguous, etc (build-2 QA
+                    // #9: a number like "5557770001" blocked without a country code showed a
+                    // blank row). isNullOrBlank() catches that case too, not just a true null.
+                    val e164 = if (e164Index >= 0) cursor.getString(e164Index) else null
+                    val original = if (originalIndex >= 0) cursor.getString(originalIndex) else null
+                    val number = e164.takeUnless { it.isNullOrBlank() }
+                        ?: original.takeUnless { it.isNullOrBlank() }
                         ?: continue
                     results += BlockedNumberEntry(phoneNumber = number, blockedTimestampMillis = null)
                 }

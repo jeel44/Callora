@@ -210,6 +210,7 @@
     <string name="block_confirm_title">Blokkere dette nummeret?</string>
     <string name="block_confirm_subtitle">Du vil ikke motta anrop eller meldinger fra dette nummeret igjen.</string>
     <string name="block_confirm_button">Blokker nummer</string>
+    <string name="block_confirm_failed_not_default">Kunne ikke blokkere – angi Caller ID som standard telefonapp først</string>
 
     <!-- Spam center screen -->
     <string name="spam_center_title">Spamsenter</string>

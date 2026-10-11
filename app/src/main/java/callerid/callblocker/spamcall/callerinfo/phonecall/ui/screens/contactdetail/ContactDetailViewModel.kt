@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.BlockedNumbersRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallLogRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsChangeSignal
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallHistoryEntry
@@ -172,6 +173,13 @@ class ContactDetailViewModel(
         )
     }
 
+    fun onVideoCallUnavailable() {
+        val context = getApplication<Application>()
+        _uiState.value = _uiState.value.copy(
+            snackbarMessage = context.getString(R.string.contact_detail_video_not_supported),
+        )
+    }
+
     fun snackbarMessageShown() {
         _uiState.value = _uiState.value.copy(snackbarMessage = null)
     }
@@ -253,6 +261,7 @@ class ContactDetailViewModel(
         viewModelScope.launch {
             val context = getApplication<Application>()
             val deleted = withContext(Dispatchers.IO) { contactsRepository.deleteContact(context, contactId) }
+            if (deleted) ContactsChangeSignal.pendingRefresh = true
             _uiState.value = if (deleted) {
                 _uiState.value.copy(showDeleteConfirmDialog = false, isDeleting = false, deleted = true)
             } else {

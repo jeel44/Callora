@@ -21,15 +21,17 @@ class BlockConfirmViewModel(
         checkNotNull(savedStateHandle.get<String>("phoneNumber")) { "block_confirm requires a phoneNumber nav argument" },
     )
 
-    // Whether the block actually took (e.g. canCurrentUserBlockNumbers() is false) or not,
-    // onboarding-style screens in this app always move forward after the attempt rather than
-    // blocking navigation on the result.
-    fun blockNumber(onComplete: () -> Unit) {
+    // Navigation always proceeds after the attempt (this is still an onboarding-style
+    // confirmation sheet, not a form to retry) - but build-2 QA (#8) found the sheet claiming
+    // "you won't receive calls or texts from this number" even when the block silently failed
+    // (not holding ROLE_DIALER). [onComplete] now carries whether it actually succeeded, so the
+    // screen can tell the person honestly instead of letting a false promise stand.
+    fun blockNumber(onComplete: (succeeded: Boolean) -> Unit) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            val succeeded = withContext(Dispatchers.IO) {
                 blockedNumbersRepository.blockNumber(getApplication(), phoneNumber)
             }
-            onComplete()
+            onComplete(succeeded)
         }
     }
 }

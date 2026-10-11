@@ -29,12 +29,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -52,7 +55,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.isUnspecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -83,7 +88,6 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onOpenNotifications: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenFilter: () -> Unit,
     onOpenContactDetail: (phoneNumber: String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAllContacts: () -> Unit,
@@ -210,7 +214,8 @@ fun HomeScreen(
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             HomeTopBar(
-                onOpenFilter = onOpenFilter,
+                missedOnly = uiState.missedOnly,
+                onMissedOnlyChange = viewModel::onMissedOnlyFilterChanged,
                 onOpenNotifications = onOpenNotifications,
                 onOpenSearch = onOpenSearch,
             )
@@ -349,7 +354,8 @@ fun HomeScreen(
 
 @Composable
 private fun HomeTopBar(
-    onOpenFilter: () -> Unit,
+    missedOnly: Boolean,
+    onMissedOnlyChange: (Boolean) -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenSearch: () -> Unit,
 ) {
@@ -367,11 +373,40 @@ private fun HomeTopBar(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        TopBarIconButton(
-            icon = Icons.Filled.FilterList,
-            contentDescription = stringResource(R.string.home_filter_content_description),
-            onClick = onOpenFilter,
-        )
+        // Build-2 QA N3: this was wired to an onOpenFilter callback that CalloraNavHost passed
+        // as an empty lambda, so tapping it did nothing at all. Now a real All/Missed filter,
+        // same two options Contact Detail's own call-history filter already offers.
+        Box {
+            var menuExpanded by remember { mutableStateOf(false) }
+            TopBarIconButton(
+                icon = Icons.Filled.FilterList,
+                contentDescription = stringResource(R.string.home_filter_content_description),
+                onClick = { menuExpanded = true },
+                tint = if (missedOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.home_filter_all_calls)) },
+                    onClick = {
+                        onMissedOnlyChange(false)
+                        menuExpanded = false
+                    },
+                    leadingIcon = if (!missedOnly) {
+                        { Icon(imageVector = Icons.Filled.Check, contentDescription = null) }
+                    } else null,
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.home_filter_missed_calls)) },
+                    onClick = {
+                        onMissedOnlyChange(true)
+                        menuExpanded = false
+                    },
+                    leadingIcon = if (missedOnly) {
+                        { Icon(imageVector = Icons.Filled.Check, contentDescription = null) }
+                    } else null,
+                )
+            }
+        }
         TopBarIconButton(
             icon = Icons.Outlined.Notifications,
             contentDescription = stringResource(R.string.home_notifications_content_description),
@@ -395,6 +430,7 @@ private fun TopBarIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     showDot: Boolean = false,
+    tint: Color = Color.Unspecified,
 ) {
     val buttonColor = MaterialTheme.colorScheme.surfaceVariant
     Box(
@@ -408,7 +444,7 @@ private fun TopBarIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = if (tint.isUnspecified) MaterialTheme.colorScheme.onSurface else tint,
             modifier = Modifier.size(24.dp),
         )
         if (showDot) {

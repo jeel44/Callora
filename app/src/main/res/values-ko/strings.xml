@@ -209,6 +209,7 @@
     <string name="block_confirm_title">이 번호를 차단하시겠습니까?</string>
     <string name="block_confirm_subtitle">이 번호로부터 더 이상 전화나 문자를 받지 않습니다.</string>
     <string name="block_confirm_button">번호 차단</string>
+    <string name="block_confirm_failed_not_default">차단할 수 없습니다. 먼저 Caller ID를 기본 전화 앱으로 설정하세요</string>
 
     <!-- Spam center screen -->
     <string name="spam_center_title">스팸 센터</string>
