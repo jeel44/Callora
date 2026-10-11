@@ -1,13 +1,21 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * Design tokens that don't have a direct Material3 [MaterialTheme.colorScheme] slot
@@ -115,6 +123,21 @@ fun CalloraTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val extendedColors = if (darkTheme) DarkExtendedColors else LightExtendedColors
 
+    // enableEdgeToEdge()'s default SystemBarStyle.auto picks bar icon colors once, from the
+    // *system* night mode — not ThemeState, which Settings can flip independently. With the device
+    // dark and the app light (or vice versa) that left white icons on the light canvas. Re-applied
+    // on every recomposition so a Settings toggle updates the icons without an Activity recreate.
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = view.context.findActivity()?.window ?: return@SideEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
     CompositionLocalProvider(LocalCalloraExtendedColors provides extendedColors) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -125,6 +148,12 @@ fun CalloraTheme(
     }
 }
 
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
 /**
  * Extends [MaterialTheme] with the tokens that don't have a standard color-scheme slot.
  * Usage mirrors the built-in scheme: `MaterialTheme.extendedColors.spam`.
@@ -132,3 +161,16 @@ fun CalloraTheme(
 val MaterialTheme.extendedColors: CalloraExtendedColors
     @Composable
     get() = LocalCalloraExtendedColors.current
+
+/** App-wide [androidx.compose.material3.Switch] colors. Unchecked colors are set explicitly:
+ * Material3's defaults draw the unchecked thumb and border in colorScheme.outline, which this theme
+ * uses as a pale divider tone (#DCE4EE light / #2A374A dark), leaving the off state almost
+ * invisible against a card in either theme. */
+@Composable
+fun calloraSwitchColors(): SwitchColors = SwitchDefaults.colors(
+    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+    checkedTrackColor = MaterialTheme.colorScheme.primary,
+    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+    uncheckedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+)

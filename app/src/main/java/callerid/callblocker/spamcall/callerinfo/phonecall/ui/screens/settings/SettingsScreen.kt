@@ -41,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -62,6 +61,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.BottomNa
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CalloraBottomNavBar
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.calloraSwitchColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 
 /**
@@ -146,10 +146,7 @@ fun SettingsScreen(
                                     Switch(
                                         checked = ThemeState.isDarkMode,
                                         onCheckedChange = { ThemeState.isDarkMode = it },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                        ),
+                                        colors = calloraSwitchColors(),
                                     )
                                 },
                             )
@@ -162,10 +159,7 @@ fun SettingsScreen(
                                     Switch(
                                         checked = afterCallScreenEnabled,
                                         onCheckedChange = viewModel::setAfterCallScreenEnabled,
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                        ),
+                                        colors = calloraSwitchColors(),
                                     )
                                 },
                             )

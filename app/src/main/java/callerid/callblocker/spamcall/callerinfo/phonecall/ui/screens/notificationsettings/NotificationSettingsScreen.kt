@@ -30,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +53,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.Permis
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.PermissionPromptRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.calloraSwitchColors
 import kotlinx.coroutines.launch
 
 /**
@@ -216,10 +216,7 @@ private fun ToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-            ),
+            colors = calloraSwitchColors(),
         )
     }
 }

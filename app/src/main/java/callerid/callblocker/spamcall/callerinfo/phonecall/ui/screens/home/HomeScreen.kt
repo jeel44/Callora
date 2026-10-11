@@ -367,7 +367,7 @@ private fun HomeTopBar(
     }
 }
 
-/** 38dp circular tap target with an 18dp glyph. [showDot] adds a 7dp red badge whose ring, in the
+/** 40dp circular tap target with a 24dp glyph. [showDot] adds a 7dp red badge whose ring, in the
  * button's own fill, cuts it into the glyph's top-right corner. */
 @Composable
 private fun TopBarIconButton(
@@ -379,7 +379,7 @@ private fun TopBarIconButton(
     val buttonColor = MaterialTheme.colorScheme.surfaceVariant
     Box(
         modifier = Modifier
-            .size(38.dp)
+            .size(40.dp)
             .clip(CircleShape)
             .background(buttonColor)
             .clickable(onClick = onClick),
@@ -389,12 +389,13 @@ private fun TopBarIconButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(24.dp),
         )
         if (showDot) {
             Box(
                 modifier = Modifier
-                    .offset(x = 6.dp, y = (-6).dp)
+                    // Scaled with the glyph (18dp -> 24dp: 6dp -> 8dp) so the dot stays on the bell's corner.
+                    .offset(x = 8.dp, y = (-8).dp)
                     .size(10.dp)
                     .background(buttonColor, CircleShape)
                     .padding(1.5.dp)

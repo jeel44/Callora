@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -64,6 +63,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogD
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallLogRow
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CardShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.calloraSwitchColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import java.time.Instant
 import java.time.LocalDate
@@ -279,10 +279,7 @@ private fun RuleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-            ),
+            colors = calloraSwitchColors(),
         )
     }
 }
