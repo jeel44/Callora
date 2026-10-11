@@ -20,11 +20,20 @@
          mid-range device), even with the system in dark mode. core-splashscreen backports the
          Android 12 splash to API 23+: theme-canvas background (light/dark via values-night) plus
          the launcher icon. installSplashScreen() in MainActivity swaps to postSplashScreenTheme
-         and holds the splash until CalloraNavHost has resolved its start destination. -->
+         and holds the splash until CalloraNavHost has resolved its start destination. Always
+         light (see colors.xml's splash_background), matching the app's light default. -->
     <style name="Theme.Callora.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.Callora</item>
+    </style>
+
+    <!-- Dark twin of Theme.Callora.Starting. Never a manifest theme: MainActivity registers it
+         with the system via SplashScreen.setSplashScreenTheme() (API 33+) while the saved theme
+         is dark, so the next cold start's system-drawn splash is already dark. Below API 33 the
+         system offers no way to change the splash from app code, so it stays light there. -->
+    <style name="Theme.Callora.Starting.Dark">
+        <item name="windowSplashScreenBackground">@color/splash_background_dark</item>
     </style>
 
     <!-- Applied via MainActivity.setTheme() before super.onCreate() whenever ThemeState.isDarkMode

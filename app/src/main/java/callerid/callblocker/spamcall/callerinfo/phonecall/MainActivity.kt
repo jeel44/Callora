@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
@@ -83,6 +84,7 @@ class MainActivity : AppCompatActivity() {
             Log.i(DIAG_TAG, "onCreate: light mode, keeping default Theme.Callora")
         }
         super.onCreate(savedInstanceState)
+        syncSystemSplashThemeWithThemeState()
         suppressAppOpenAdForCallIntent(intent)
         enableEdgeToEdge()
         applyIncomingCallWindowFlags(intent)
@@ -159,6 +161,24 @@ class MainActivity : AppCompatActivity() {
      * notification, placing/dialing a call, or CallEndedActivity's Contact action — must never
      * have an App Open ad appear over what it opens (see AppOpenAdManager). Only a plain launch
      * (launcher icon / recents) is eligible. */
+    /**
+     * The system draws the cold-start splash before any app code runs, so the only way to make
+     * it follow the saved theme is to tell the system ahead of time: on API 33+ the theme passed
+     * to [android.window.SplashScreen.setSplashScreenTheme] is persisted and used for every later
+     * cold start. Re-sent whenever ThemeState flips (Settings toggle), so the next launch's
+     * splash matches. Below API 33 the manifest's always-light Theme.Callora.Starting is used.
+     */
+    private fun syncSystemSplashThemeWithThemeState() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        lifecycleScope.launch {
+            snapshotFlow { ThemeState.isDarkMode }.collect { isDark ->
+                splashScreen.setSplashScreenTheme(
+                    if (isDark) R.style.Theme_Callora_Starting_Dark else R.style.Theme_Callora_Starting,
+                )
+            }
+        }
+    }
+
     private fun suppressAppOpenAdForCallIntent(intent: Intent) {
         val isCallRelated = intent.action == Intent.ACTION_DIAL ||
             intent.getBooleanExtra(EXTRA_INCOMING_CALL, false) ||

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ThemePreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.BottomNavDestination
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CalloraBottomNavBar
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ListItemShape
@@ -145,7 +146,10 @@ fun SettingsScreen(
                                 trailing = {
                                     Switch(
                                         checked = ThemeState.isDarkMode,
-                                        onCheckedChange = { ThemeState.isDarkMode = it },
+                                        onCheckedChange = {
+                                            ThemeState.isDarkMode = it
+                                            ThemePreferencesRepository.setDarkMode(context, it)
+                                        },
                                         colors = calloraSwitchColors(),
                                     )
                                 },

@@ -3,13 +3,13 @@ package callerid.callblocker.spamcall.callerinfo.phonecall
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.res.Configuration
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.MobileAdsInitializer
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.LanguagePreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.OnboardingRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.RecentCallsSnapshotStore
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ThemePreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.MISSED_CALL_CHANNEL_ID
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
@@ -42,11 +42,9 @@ class CalloraApplication : Application() {
         // Home paints them on its first frame instead of an empty RECENT section.
         StartupTimer.section("RecentCallsSnapshotStore.preload") { RecentCallsSnapshotStore.preload(this) }
         StartupTimer.section("applyPersistedLanguage") { applyPersistedLanguage() }
-        // Start in the system's light/dark mode — the cold-start splash (Theme.Callora.Starting)
-        // is drawn from values/values-night before any app code runs, so this is what keeps the
-        // first Compose frame on the same canvas instead of flipping light<->dark after it.
-        ThemeState.isDarkMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
+        // The user's saved Settings choice, or light mode when nothing is saved yet (fresh
+        // install) — deliberately not the system night mode, so the app always opens light first.
+        ThemeState.isDarkMode = ThemePreferencesRepository.isDarkModeForStartup(this)
         // No existing crash-reporting/analytics consent toggle exists anywhere in this app (see
         // Settings) to defer to, so this just uses Crashlytics' own default (collection on).
         // Explicit here rather than left implicit so it's obvious this is intentional, and so a

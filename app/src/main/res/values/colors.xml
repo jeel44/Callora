@@ -17,9 +17,10 @@
     <color name="window_background_light">#FFE7EDF3</color>
     <color name="window_background_dark">#FF0E1622</color>
 
-    <!-- Theme.Callora.Starting's splash background. The starting window is drawn before any app
-         code runs, so it can only follow the system night mode — values-night overrides this
-         with window_background_dark, and CalloraApplication seeds ThemeState from that same
-         system setting so the first Compose frame lands on the matching canvas. -->
+    <!-- Theme.Callora.Starting's splash background. Deliberately has no values-night override:
+         the app opens light unless the user saved dark in Settings (ThemePreferencesRepository),
+         so the splash defaults to light regardless of the system theme. A saved dark choice
+         switches future splashes to Theme.Callora.Starting.Dark (API 33+, see MainActivity). -->
     <color name="splash_background">@color/window_background_light</color>
+    <color name="splash_background_dark">@color/window_background_dark</color>
 </resources>

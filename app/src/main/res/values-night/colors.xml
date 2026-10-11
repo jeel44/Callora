@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- See values/colors.xml's splash_background. -->
-    <color name="splash_background">@color/window_background_dark</color>
-</resources>
