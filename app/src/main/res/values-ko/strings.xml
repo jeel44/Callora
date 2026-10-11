@@ -43,6 +43,7 @@
     <!-- Dialpad -->
     <string name="dialpad_back_content_description">뒤로</string>
     <string name="dialpad_delete_content_description">삭제</string>
+    <string name="dialpad_suggested_title">추천</string>
     <string name="dialpad_call_content_description">전화</string>
 
     <!-- Outgoing dialing -->

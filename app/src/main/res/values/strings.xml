@@ -47,6 +47,7 @@
     <!-- Dialpad -->
     <string name="dialpad_back_content_description">Back</string>
     <string name="dialpad_delete_content_description">Delete</string>
+    <string name="dialpad_suggested_title">Suggested</string>
     <string name="dialpad_call_content_description">Call</string>
 
     <!-- Outgoing dialing -->

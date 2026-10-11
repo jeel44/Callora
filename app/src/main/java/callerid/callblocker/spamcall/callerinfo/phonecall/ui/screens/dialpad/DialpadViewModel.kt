@@ -1,10 +1,13 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.dialpad
 
 import android.app.Application
+import android.telephony.PhoneNumberUtils
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallLogRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.prewarmPhoneNumberMetadata
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +16,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
@@ -23,6 +27,11 @@ import kotlinx.coroutines.withContext
 private const val MATCH_DEBOUNCE_MILLIS = 150L
 
 private const val INDIA_COUNTRY_PREFIX = "+91"
+
+/** How many of the newest call-log rows the Suggested list is picked from. */
+private const val SUGGESTION_SCAN_ROWS = 50
+
+private const val MAX_SUGGESTIONS = 4
 
 /**
  * Digits to substring-match contacts against for what's on the dialpad. A number that resolves
@@ -47,6 +56,16 @@ internal fun contactMatchDigits(typed: String): String {
 class DialpadViewModel(application: Application) : AndroidViewModel(application) {
 
     private val contactsRepository = ContactsRepository()
+    private val callLogRepository = CallLogRepository(contactsRepository)
+
+    private val _suggestions = MutableStateFlow<List<RecentCallEntry>>(emptyList())
+
+    /**
+     * The empty-dialpad "Suggested" list. There's no frequent-contacts query in the app, so this
+     * is the most recently called/calling distinct numbers that belong to a saved contact, taken
+     * from the newest [SUGGESTION_SCAN_ROWS] call-log rows. Loaded once per screen visit.
+     */
+    val suggestions: StateFlow<List<RecentCallEntry>> = _suggestions.asStateFlow()
 
     private val _typedDigits = MutableStateFlow("")
 
@@ -73,6 +92,19 @@ class DialpadViewModel(application: Application) : AndroidViewModel(application)
         // libphonenumber's metadata now — well before the user's first key press — rather than
         // on the main thread at that first press.
         viewModelScope.launch(Dispatchers.Default) { prewarmPhoneNumberMetadata() }
+        viewModelScope.launch(Dispatchers.IO) {
+            val recent = callLogRepository.getRecentCalls(getApplication(), limit = SUGGESTION_SCAN_ROWS, offset = 0).entries
+            val picked = mutableListOf<RecentCallEntry>()
+            for (entry in recent) {
+                if (entry.name == null) continue
+                // Loose match, as elsewhere in the app, so "+91 98765 43210" and "09876543210"
+                // in the call log count as the same person.
+                if (picked.any { PhoneNumberUtils.compare(it.phoneNumber, entry.phoneNumber) }) continue
+                picked += entry
+                if (picked.size == MAX_SUGGESTIONS) break
+            }
+            _suggestions.value = picked
+        }
     }
 
     /** Called on every dialpad key press/backspace/clear so [matchingContacts] tracks the field. */

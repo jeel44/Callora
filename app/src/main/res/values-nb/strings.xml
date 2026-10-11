@@ -43,6 +43,7 @@
     <!-- Dialpad -->
     <string name="dialpad_back_content_description">Tilbake</string>
     <string name="dialpad_delete_content_description">Slett</string>
+    <string name="dialpad_suggested_title">Forslag</string>
     <string name="dialpad_call_content_description">Ring</string>
 
     <!-- Outgoing dialing -->

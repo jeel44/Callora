@@ -43,6 +43,7 @@
     <!-- Dialpad -->
     <string name="dialpad_back_content_description">Zurück</string>
     <string name="dialpad_delete_content_description">Löschen</string>
+    <string name="dialpad_suggested_title">Vorschläge</string>
     <string name="dialpad_call_content_description">Anrufen</string>
 
     <!-- Outgoing dialing -->

@@ -43,6 +43,7 @@
     <!-- Dialpad -->
     <string name="dialpad_back_content_description">Retour</string>
     <string name="dialpad_delete_content_description">Supprimer</string>
+    <string name="dialpad_suggested_title">Suggestions</string>
     <string name="dialpad_call_content_description">Appeler</string>
 
     <!-- Outgoing dialing -->
