@@ -76,10 +76,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     /**
      * TelephonyManager.line1Number is unreliable by design — carriers frequently withhold it
-     * even when READ_PHONE_NUMBERS is granted, and on target SDK 29+ that permission (not the
-     * READ_PHONE_STATE this app already requests) is what's actually required. Rather than add
-     * a new permission prompt just for this, treat any missing permission or blank result as
-     * "unavailable" so the UI can omit the number instead of showing something fake.
+     * even when READ_PHONE_NUMBERS is granted. That permission (not READ_PHONE_STATE) is what's
+     * actually required on API 26+; it's requested together with READ_PHONE_STATE in Home's
+     * call-log permission bundle. Treat any missing permission or blank result as "unavailable"
+     * so the UI can omit the number instead of showing something fake.
      */
     private fun getDevicePhoneNumber(context: Context): String? {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) ==

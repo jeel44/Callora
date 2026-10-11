@@ -17,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,7 @@ internal fun IncomingCallLayout(
     isSpam: Boolean,
     tagText: String?,
     simAccountLabel: String?,
+    simAccountColor: Int? = null,
     middleButtonIcon: ImageVector,
     middleButtonLabel: String,
     onMiddleButtonClick: () -> Unit,
@@ -77,7 +79,7 @@ internal fun IncomingCallLayout(
 
             if (simAccountLabel != null) {
                 Spacer(modifier = Modifier.height(14.dp))
-                SimAccountLabel(label = simAccountLabel)
+                SimAccountLabel(label = simAccountLabel, color = simAccountColor?.let { Color(it) })
             }
 
             if (tagText != null && !isResolvingIdentity) {

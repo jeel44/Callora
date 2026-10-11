@@ -61,6 +61,7 @@
     <string name="call_tag_saved_contact">Saved contact</string>
     <string name="call_minimize_content_description">Minimize</string>
     <string name="call_mute_label">Mute</string>
+    <string name="call_unmute_label">Unmute</string>
     <string name="call_speaker_label">Speaker</string>
     <string name="incoming_call_label">INCOMING CALL</string>
     <string name="incoming_unknown_number">Unknown number</string>

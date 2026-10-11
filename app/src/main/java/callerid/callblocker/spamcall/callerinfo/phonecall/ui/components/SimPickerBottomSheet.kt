@@ -35,15 +35,13 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallAccount
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 
-// Alternating per-slot accent colors — purely a visual distinguisher between rows (which SIM is
-// which), not tied to any real per-carrier branding since TelecomManager exposes no such thing.
-private val SimSlotColors = listOf(Color(0xFF4FA3FF), Color(0xFFFF8A65), Color(0xFF81C784), Color(0xFFBA68C8))
-
 /**
  * Shown by CalloraNavHost.placeCallWithSimCheck right before a call is actually placed, but only
- * when TelecomManager.getCallCapablePhoneAccounts() reports 2+ accounts (see PhoneAccounts.kt) —
+ * when TelecomManager.getCallCapablePhoneAccounts() reports 2+ accounts (see PhoneAccounts.kt)
+ * and the user has no system default calling SIM set (getDefaultOutgoingAccount) —
  * a single-SIM device never sees this at all, so its outgoing calls keep the exact
- * placeCall(uri, null) behavior that existed before dual-SIM support.
+ * placeCall(uri, null) behavior that existed before dual-SIM support. Each row's color is the
+ * SIM's own system-reported color where available (see CallAccount.color).
  *
  * Dismissing (backdrop tap or swipe-down) cancels the call attempt outright rather than falling
  * back to some default account — same "explicit response required" spirit as
@@ -92,7 +90,7 @@ fun SimPickerBottomSheet(
             accounts.forEachIndexed { index, account ->
                 SimPickerRow(
                     account = account,
-                    slotColor = SimSlotColors[index % SimSlotColors.size],
+                    slotColor = Color(account.color),
                     onClick = { onAccountSelected(account.handle) },
                 )
                 if (index != accounts.lastIndex) Spacer(modifier = Modifier.height(4.dp))

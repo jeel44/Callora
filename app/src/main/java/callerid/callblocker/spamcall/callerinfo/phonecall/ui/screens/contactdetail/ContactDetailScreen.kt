@@ -100,12 +100,14 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallHistoryEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SimCallLogIndicator
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SpamCategoryPickerSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ChipShape
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeDayLabel
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatTimeOfDay
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.initialsOf
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
 import coil.compose.AsyncImage
 
@@ -415,17 +417,6 @@ private val ActionButtonShape = RoundedCornerShape(20.dp)
 
 /** WhatsApp's brand green — deliberately a fixed literal, not a theme token. */
 private val WhatsAppGreen = Color(0xFF25D366)
-
-/** Up to two initials ("Priya Sharma" → "PS"), or '#' when the name has no letters at all. */
-private fun initialsOf(name: String): String {
-    val initials = name.split(' ')
-        .mapNotNull { word -> word.firstOrNull { it.isLetter() }?.uppercaseChar() }
-    return when {
-        initials.isEmpty() -> "#"
-        initials.size == 1 -> initials.first().toString()
-        else -> "${initials.first()}${initials.last()}"
-    }
-}
 
 @Composable
 private fun IdentityBlock(contact: Contact?, phoneNumber: String, onNumberLongPress: () -> Unit) {
@@ -988,11 +979,17 @@ private fun CallHistoryRow(entry: CallHistoryEntry) {
                 },
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = formatTimeOfDay(entry.timestamp),
-                style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-                color = MaterialTheme.extendedColors.onSurfaceFaint,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatTimeOfDay(entry.timestamp),
+                    style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                    color = MaterialTheme.extendedColors.onSurfaceFaint,
+                )
+                entry.simLabel?.let { simLabel ->
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SimCallLogIndicator(label = simLabel, color = entry.simColor)
+                }
+            }
         }
 
         Box(

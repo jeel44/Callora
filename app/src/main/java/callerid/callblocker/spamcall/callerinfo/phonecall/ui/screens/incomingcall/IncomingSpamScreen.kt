@@ -26,6 +26,7 @@ fun IncomingSpamScreen(
     onUrgent: () -> Unit,
     modifier: Modifier = Modifier,
     simAccountLabel: String? = null,
+    simAccountColor: Int? = null,
 ) {
     IncomingCallLayout(
         isResolvingIdentity = isResolvingIdentity,
@@ -35,6 +36,7 @@ fun IncomingSpamScreen(
         isSpam = true,
         tagText = stringResource(R.string.call_tag_marked_spam),
         simAccountLabel = simAccountLabel,
+        simAccountColor = simAccountColor,
         middleButtonIcon = Icons.Filled.Block,
         middleButtonLabel = stringResource(R.string.incoming_block_label),
         onMiddleButtonClick = onBlock,

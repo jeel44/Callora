@@ -19,4 +19,8 @@ data class RecentCallEntry(
     // Populated by HomeViewModel via the existing SpamMarkRepository, not by CallLogRepository
     // itself — the call log and spam-marking are separate local data sources.
     val isSpam: Boolean = false,
+    // Which SIM the call was on (label + ARGB color, see PhoneAccounts.findAccountForCallLog) —
+    // only ever set on a multi-SIM device, so single-SIM rows show no SIM indicator at all.
+    val simLabel: String? = null,
+    val simColor: Int? = null,
 )

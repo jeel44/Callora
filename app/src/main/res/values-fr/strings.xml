@@ -57,6 +57,7 @@
     <string name="call_tag_saved_contact">Contact enregistré</string>
     <string name="call_minimize_content_description">Réduire</string>
     <string name="call_mute_label">Muet</string>
+    <string name="call_unmute_label">Réactiver le micro</string>
     <string name="call_speaker_label">Haut-parleur</string>
     <string name="incoming_call_label">APPEL ENTRANT</string>
     <string name="incoming_unknown_number">Numéro inconnu</string>

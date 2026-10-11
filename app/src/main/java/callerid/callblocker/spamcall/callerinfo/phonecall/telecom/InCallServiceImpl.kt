@@ -6,9 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
@@ -20,12 +21,15 @@ import android.telecom.InCallService
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.TaskStackBuilder
+import androidx.core.graphics.drawable.IconCompat
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.AfterCallPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.callended.CallEndedActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.initialsOf
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
@@ -33,6 +37,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -40,12 +45,19 @@ private const val DIAG_TAG = "DIAG_InCallService"
 private const val NOTIFICATION_CHANNEL_ID = "active_call_channel"
 private const val NOTIFICATION_ID = 1001
 private const val ACTION_HANGUP = "callerid.callblocker.spamcall.callerinfo.phonecall.action.HANGUP_FROM_NOTIFICATION"
+private const val ACTION_TOGGLE_MUTE = "callerid.callblocker.spamcall.callerinfo.phonecall.action.TOGGLE_MUTE_FROM_NOTIFICATION"
 
-// Matches CalloraPrimary (ui/theme/Color.kt) — Compose colors aren't reachable from this plain
-// Service, so the notification's fallback avatar circle hardcodes the same ARGB value to stay
-// visually consistent with the in-app avatar style (colored circle + initial letter).
-private const val AVATAR_BACKGROUND_COLOR = 0xFF42A5F5.toInt()
+// Compose colors aren't reachable from this plain Service, so the fallback avatar hardcodes the
+// same values Contact Info's avatar uses (ui/theme/Color.kt): CalloraPrimary initials on the
+// Light/DarkAccentContainer circle, picked by the system night mode the notification shade follows.
+private const val AVATAR_INITIALS_COLOR = 0xFF42A5F5.toInt()
+private const val AVATAR_BACKGROUND_LIGHT = 0xFFE3EFFD.toInt()
+private const val AVATAR_BACKGROUND_DARK = 0xFF1E2A3A.toInt()
 private const val AVATAR_SIZE_PX = 192
+
+// The dialer's fixed call-green (see DialpadScreen) — the notification's accent colour.
+private const val CALL_GREEN_LIGHT = 0xFF2DA84B.toInt()
+private const val CALL_GREEN_DARK = 0xFF34C063.toInt()
 
 /**
  * Bound by the system whenever this app holds RoleManager.ROLE_DIALER and a call exists —
@@ -92,16 +104,21 @@ class InCallServiceImpl : InCallService() {
         }
         createNotificationChannel()
         serviceScope.launch {
-            CallRepository.activeCallUiState.collect { state ->
-                // Holds the first post until the contact lookup settles (CallRepository always
-                // re-emits once it does) — posting with the raw number and then re-notifying with
-                // the name is the same number -> name flash, just in the notification shade.
-                when {
-                    state == null -> cancelOngoingCallNotification()
-                    state.isResolvingContactName -> Unit
-                    else -> showOngoingCallNotification(state)
+            // Driven by the full call state, not CallRepository.activeCallUiState: that one (which
+            // also drives the in-app banner) only ever covers outgoing calls, so an answered
+            // incoming call used to get no notification at all. Combined with audioState so the
+            // Mute action's label follows the real mic state.
+            combine(CallRepository.callState, CallRepository.audioState) { call, audio -> call to audio.isMuted }
+                .collect { (call, isMuted) ->
+                    // Holds the first post until the contact lookup settles (CallRepository always
+                    // re-emits once it does) — posting with the raw number and then re-notifying
+                    // with the name is the same number -> name flash, just in the notification shade.
+                    when {
+                        !call.showsOngoingNotification() -> cancelOngoingCallNotification()
+                        call.isResolvingContactName -> Unit
+                        else -> showOngoingCallNotification(call, isMuted)
+                    }
                 }
-            }
         }
     }
 
@@ -109,10 +126,15 @@ class InCallServiceImpl : InCallService() {
         // The notification's hang-up action re-enters this same service via a plain
         // startService/PendingIntent — not part of the normal system-bound InCallService
         // lifecycle, but nothing prevents a regular Service action from being handled here too.
-        if (intent?.action == ACTION_HANGUP) {
-            CallRepository.disconnect()
+        when (intent?.action) {
+            ACTION_HANGUP -> CallRepository.disconnect()
+            // Same CallRepository.setMuted the Active Call screen's Mute button uses.
+            ACTION_TOGGLE_MUTE -> CallRepository.setMuted(!CallRepository.audioState.value.isMuted)
         }
-        return super.onStartCommand(intent, flags, startId)
+        // Being started by an action must not keep this service alive once Telecom unbinds it
+        // after the call — clearing the started state leaves its lifetime to the binding alone.
+        stopSelf(startId)
+        return START_NOT_STICKY
     }
 
     override fun onCallAdded(call: Call) {
@@ -221,41 +243,48 @@ class InCallServiceImpl : InCallService() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    /** Builds and posts the ongoing-call notification. Loads the large icon (contact photo or a
+    /** Outgoing calls get the notification from dialing onwards (a way back to the call before it
+     * connects); incoming calls only once answered — while ringing they have their own full-screen UI. */
+    private fun ActiveCallInfo.showsOngoingNotification(): Boolean = when (state) {
+        CallUiState.ACTIVE -> true
+        CallUiState.DIALING, CallUiState.RINGING -> !isIncoming
+        else -> false
+    }
+
+    private var isForegroundForCall = false
+
+    /** Builds and posts the ongoing-call notification — CallStyle on Android 12+, a plain
+     * notification with the same content below that. Loads the person icon (contact photo or a
      * rendered initials avatar) off the main thread before posting — Coil's image load is a
      * suspend call, so this whole function is suspend and is driven from the collector's
      * coroutine in [onCreate], not launched fire-and-forget. */
-    private suspend fun showOngoingCallNotification(state: ActiveCallUiState) {
-        val formattedNumber = state.phoneNumber?.let { formatPhoneNumberForDisplay(it) }
-        val title = state.displayName ?: formattedNumber ?: getString(R.string.active_call_unknown_caller)
-        val statusLabel = when (state.state) {
+    private suspend fun showOngoingCallNotification(call: ActiveCallInfo, isMuted: Boolean) {
+        val formattedNumber = call.phoneNumber?.let { formatPhoneNumberForDisplay(it) }
+        val title = call.displayName ?: formattedNumber ?: getString(R.string.active_call_unknown_caller)
+        // Same "Phone" label Contact Info uses — the app doesn't know the number's real type.
+        val statusText = when (call.state) {
+            CallUiState.ACTIVE -> getString(R.string.contact_detail_number_label)
             CallUiState.RINGING -> getString(R.string.outgoing_status_ringing)
-            CallUiState.ACTIVE -> getString(R.string.ongoing_call_notification_status_active)
             else -> getString(R.string.outgoing_status_calling)
         }
-        val contentText = if (formattedNumber != null) {
-            getString(R.string.ongoing_call_notification_subtitle, formattedNumber, statusLabel)
-        } else {
-            statusLabel
-        }
+        // Which SIM the call is on — only non-null on a multi-SIM device (see resolveAccount),
+        // the same label Incoming/Active Call show.
+        val contentText = listOfNotNull(statusText, call.simAccountLabel).joinToString(" · ")
 
-        // Reused as both the notification's own tap target (body) and the "Return to call"
-        // action — both must land on the exact same place, so there's no reason for two
-        // separate PendingIntents doing the same thing.
         val contentIntent = buildActiveCallContentIntent()
-        val hangupIntent = PendingIntent.getService(
-            this,
-            0,
-            Intent(this, InCallServiceImpl::class.java).setAction(ACTION_HANGUP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val largeIcon = loadLargeIcon(state.displayName, state.photoUri)
+        val hangupIntent = serviceActionIntent(ACTION_HANGUP)
+        val avatar = loadAvatar(call.displayName, call.photoUri)
+        val muteAction = NotificationCompat.Action.Builder(
+            if (isMuted) R.drawable.ic_notification_mic else R.drawable.ic_notification_mic_off,
+            getString(if (isMuted) R.string.call_unmute_label else R.string.call_mute_label),
+            serviceActionIntent(ACTION_TOGGLE_MUTE),
+        ).build()
 
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_call)
+            .setColor(if (isNightMode()) CALL_GREEN_DARK else CALL_GREEN_LIGHT)
             .setContentTitle(title)
             .setContentText(contentText)
-            .setLargeIcon(largeIcon)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
@@ -263,21 +292,39 @@ class InCallServiceImpl : InCallService() {
             .apply {
                 // Only a real Active call has a connect timestamp to run a live elapsed timer
                 // from — Dialing/Ringing show a plain static "Calling…"/"Ringing…" label instead.
-                if (state.connectTimestampMillis != null) {
+                if (call.connectTimestampMillis != null) {
                     setUsesChronometer(true)
-                    setWhen(state.connectTimestampMillis)
+                    setWhen(call.connectTimestampMillis)
                 } else {
                     setUsesChronometer(false)
                 }
             }
             .setContentIntent(contentIntent)
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_notification_call,
-                    getString(R.string.ongoing_call_notification_return_action),
-                    contentIntent,
-                ).build(),
-            )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            postAsCallStyle(builder, title, avatar, hangupIntent, muteAction)
+        ) {
+            return
+        }
+
+        // Below Android 12, or if the system refused to make this a foreground service (which
+        // CallStyle requires): the same content as a plain notification. Hang-up is added as a
+        // regular action here — CallStyle supplies its own red one.
+        val plain = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_call)
+            .setColor(if (isNightMode()) CALL_GREEN_DARK else CALL_GREEN_LIGHT)
+            .setContentTitle(title)
+            .setContentText(contentText)
+            .setLargeIcon(avatar)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setUsesChronometer(call.connectTimestampMillis != null)
+            .apply { call.connectTimestampMillis?.let { setWhen(it) } }
+            .setContentIntent(contentIntent)
+            .addAction(muteAction)
             .addAction(
                 // Targets InCallServiceImpl directly via ACTION_HANGUP (handled in
                 // onStartCommand) — deliberately not an activity PendingIntent, so tapping this
@@ -289,13 +336,58 @@ class InCallServiceImpl : InCallService() {
                 ).build(),
             )
             .build()
-
-        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+        NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, plain)
     }
 
-    /** Contact photo if one resolved for this call, otherwise a colored-circle-plus-initial
-     * bitmap matching the app's in-UI avatar style (see AllContactsScreen/ContactDetailScreen). */
-    private suspend fun loadLargeIcon(displayName: String?, photoUri: String?): Bitmap = withContext(Dispatchers.IO) {
+    /** Android 12+ only accepts a CallStyle notification from a foreground service (or one with a
+     * full-screen intent, which would pop the call UI over the lock screen on every post), so
+     * this service goes foreground with it for the duration of the call. Returns false if the
+     * system refuses the foreground start, so the caller can fall back to a plain notification. */
+    private fun postAsCallStyle(
+        builder: NotificationCompat.Builder,
+        title: String,
+        avatar: Bitmap,
+        hangupIntent: PendingIntent,
+        muteAction: NotificationCompat.Action,
+    ): Boolean {
+        val person = Person.Builder()
+            .setName(title)
+            .setIcon(IconCompat.createWithBitmap(avatar))
+            .setImportant(true)
+            .build()
+        val notification = builder
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(person, hangupIntent))
+            .addAction(muteAction)
+            .build()
+        return try {
+            if (isForegroundForCall) {
+                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification)
+            } else {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
+                isForegroundForCall = true
+            }
+            true
+        } catch (e: RuntimeException) {
+            // ForegroundServiceStartNotAllowedException/SecurityException, or the CallStyle
+            // rejection itself — never worth crashing the in-call service over.
+            Log.w(DIAG_TAG, "postAsCallStyle: falling back to a plain notification", e)
+            false
+        }
+    }
+
+    private fun isNightMode(): Boolean =
+        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+    private fun serviceActionIntent(action: String): PendingIntent = PendingIntent.getService(
+        this,
+        action.hashCode(),
+        Intent(this, InCallServiceImpl::class.java).setAction(action),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    /** Contact photo if one resolved for this call, otherwise an initials avatar matching Contact
+     * Info's (see ContactDetailScreen's IdentityBlock). */
+    private suspend fun loadAvatar(displayName: String?, photoUri: String?): Bitmap = withContext(Dispatchers.IO) {
         val photoBitmap = photoUri?.let { loadContactPhotoBitmap(it) }
         photoBitmap ?: renderInitialsAvatar(displayName)
     }
@@ -321,22 +413,28 @@ class InCallServiceImpl : InCallService() {
         val canvas = Canvas(bitmap)
         val center = AVATAR_SIZE_PX / 2f
 
-        val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AVATAR_BACKGROUND_COLOR }
+        val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (isNightMode()) AVATAR_BACKGROUND_DARK else AVATAR_BACKGROUND_LIGHT
+        }
         canvas.drawCircle(center, center, center, circlePaint)
 
-        val initial = displayName?.firstOrNull { it.isLetter() }?.uppercaseChar()?.toString() ?: "#"
+        val initials = displayName?.let(::initialsOf) ?: "#"
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = AVATAR_SIZE_PX * 0.45f
+            color = AVATAR_INITIALS_COLOR
+            textSize = AVATAR_SIZE_PX * if (initials.length > 1) 0.38f else 0.45f
             textAlign = Paint.Align.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
         val textY = center - (textPaint.descent() + textPaint.ascent()) / 2f
-        canvas.drawText(initial, center, textY, textPaint)
+        canvas.drawText(initials, center, textY, textPaint)
         return bitmap
     }
 
     private fun cancelOngoingCallNotification() {
+        if (isForegroundForCall) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            isForegroundForCall = false
+        }
         NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
     }
 

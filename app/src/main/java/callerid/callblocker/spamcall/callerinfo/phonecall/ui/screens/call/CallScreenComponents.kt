@@ -264,11 +264,12 @@ fun ContextTag(text: String, isSpam: Boolean, modifier: Modifier = Modifier) {
 
 /** Subtle "which SIM/line" indicator shown beneath the caller info on Incoming/Active Call —
  * [label] is only ever passed non-null on a genuinely multi-SIM device (see
- * PhoneAccounts.resolveAccountLabel), so single-SIM users never see this at all. Deliberately
+ * PhoneAccounts.resolveAccount), so single-SIM users never see this at all. Deliberately
  * muted/neutral (not colored like [ContextTag]) so it reads as secondary to the caller-ID
- * information rather than competing with the Saved-contact/Spam tag. */
+ * information rather than competing with the Saved-contact/Spam tag — only the SIM icon takes
+ * [color] (the SIM's own color, same as the SIM picker), so a SIM looks the same everywhere. */
 @Composable
-fun SimAccountLabel(label: String, modifier: Modifier = Modifier) {
+fun SimAccountLabel(label: String, modifier: Modifier = Modifier, color: Color? = null) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
@@ -279,7 +280,7 @@ fun SimAccountLabel(label: String, modifier: Modifier = Modifier) {
         Icon(
             imageVector = Icons.Filled.SimCard,
             contentDescription = null,
-            tint = MaterialTheme.extendedColors.mutedText,
+            tint = color ?: MaterialTheme.extendedColors.mutedText,
             modifier = Modifier.size(12.dp),
         )
         Spacer(modifier = Modifier.width(4.dp))

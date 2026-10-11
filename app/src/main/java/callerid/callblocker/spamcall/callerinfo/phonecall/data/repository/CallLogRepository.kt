@@ -1,12 +1,16 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.data.repository
 
 import android.content.Context
+import android.database.Cursor
 import android.provider.CallLog
 import android.telephony.PhoneNumberUtils
 import android.util.Log
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallHistoryEntry
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.RecentCallEntry
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallAccount
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.findAccountForCallLog
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getCallCapableAccounts
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 
 private const val TAG = "CallLogRepository"
@@ -44,12 +48,15 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
             CallLog.Calls.NUMBER,
             CallLog.Calls.DATE,
             CallLog.Calls.TYPE,
+            CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME,
+            CallLog.Calls.PHONE_ACCOUNT_ID,
         )
         val queryUri = CallLog.Calls.CONTENT_URI.buildUpon()
             .appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, limit.toString())
             .appendQueryParameter(CallLog.Calls.OFFSET_PARAM_KEY, offset.toString())
             .build()
 
+        val simAccounts = multiSimAccounts(context)
         val entries = mutableListOf<RecentCallEntry>()
         var rawRowCount = 0
         context.contentResolver.query(
@@ -69,6 +76,8 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
             val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
             val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
             val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+            val accountComponentIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME)
+            val accountIdIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
 
             while (cursor.moveToNext()) {
                 val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
@@ -79,6 +88,7 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
                 // log's own CACHED_NAME/CACHED_PHOTO_URI, which can go stale if a contact is
                 // added, renamed, or re-photographed after the call happened.
                 val contact = contactsRepository.getContactByPhoneNumber(context, number)
+                val simAccount = cursor.simAccount(simAccounts, accountComponentIndex, accountIdIndex)
 
                 entries += RecentCallEntry(
                     id = if (idIndex >= 0) cursor.getLong(idIndex) else 0L,
@@ -91,6 +101,8 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
                     timestamp = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L,
                     callType = mapCallType(if (typeIndex >= 0) cursor.getInt(typeIndex) else -1),
                     photoUri = contact?.photoUri,
+                    simLabel = simAccount?.label,
+                    simColor = simAccount?.color,
                 )
             }
         }
@@ -128,8 +140,11 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
             CallLog.Calls.DATE,
             CallLog.Calls.TYPE,
             CallLog.Calls.DURATION,
+            CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME,
+            CallLog.Calls.PHONE_ACCOUNT_ID,
         )
 
+        val simAccounts = multiSimAccounts(context)
         val entries = mutableListOf<CallHistoryEntry>()
         var offset = 0
         while (entries.size < limit) {
@@ -150,17 +165,22 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
                 val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
                 val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+                val accountComponentIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME)
+                val accountIdIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
                 val durationIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
 
                 while (cursor.moveToNext() && entries.size < limit) {
                     val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
                     if (number.isNullOrBlank() || !PhoneNumberUtils.compare(number, phoneNumber)) continue
 
+                    val simAccount = cursor.simAccount(simAccounts, accountComponentIndex, accountIdIndex)
                     entries += CallHistoryEntry(
                         phoneNumber = number,
                         timestamp = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L,
                         callType = mapCallType(if (typeIndex >= 0) cursor.getInt(typeIndex) else -1),
                         durationSeconds = if (durationIndex >= 0) cursor.getLong(durationIndex) else 0L,
+                        simLabel = simAccount?.label,
+                        simColor = simAccount?.color,
                     )
                 }
             }
@@ -194,7 +214,10 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
             CallLog.Calls.NUMBER,
             CallLog.Calls.DATE,
             CallLog.Calls.TYPE,
+            CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME,
+            CallLog.Calls.PHONE_ACCOUNT_ID,
         )
+        val simAccounts = multiSimAccounts(context)
         val entries = mutableListOf<RecentCallEntry>()
         var offset = 0
         while (entries.size < limit && offset < maxRowsScanned) {
@@ -216,12 +239,15 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
                 val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
                 val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+                val accountComponentIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_COMPONENT_NAME)
+                val accountIdIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
 
                 while (cursor.moveToNext() && entries.size < limit) {
                     val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
                     if (number.isNullOrBlank() || number == "-1" || number == "-2" || !matches(number)) continue
 
                     val contact = contactsRepository.getContactByPhoneNumber(context, number)
+                    val simAccount = cursor.simAccount(simAccounts, accountComponentIndex, accountIdIndex)
                     entries += RecentCallEntry(
                         id = if (idIndex >= 0) cursor.getLong(idIndex) else 0L,
                         name = contact?.name,
@@ -230,6 +256,8 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
                         timestamp = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L,
                         callType = mapCallType(if (typeIndex >= 0) cursor.getInt(typeIndex) else -1),
                         photoUri = contact?.photoUri,
+                        simLabel = simAccount?.label,
+                        simColor = simAccount?.color,
                     )
                 }
             }
@@ -238,6 +266,21 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
             offset += rawRowCount
         }
         return entries
+    }
+
+    /** Call-capable accounts to tag rows with — empty on a single-SIM device (or without
+     * READ_PHONE_STATE), so rows there never carry a SIM label, matching SimAccountLabel. Fetched
+     * once per query, not per row. */
+    private fun multiSimAccounts(context: Context): List<CallAccount> =
+        getCallCapableAccounts(context).takeIf { it.size >= 2 }.orEmpty()
+
+    private fun Cursor.simAccount(accounts: List<CallAccount>, componentIndex: Int, idIndex: Int): CallAccount? {
+        if (accounts.isEmpty() || idIndex < 0) return null
+        return findAccountForCallLog(
+            accounts,
+            componentName = if (componentIndex >= 0) getString(componentIndex) else null,
+            accountId = getString(idIndex),
+        )
     }
 
     private fun mapCallType(type: Int): CallType = when (type) {

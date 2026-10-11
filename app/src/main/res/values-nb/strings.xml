@@ -57,6 +57,7 @@
     <string name="call_tag_saved_contact">Lagret kontakt</string>
     <string name="call_minimize_content_description">Minimer</string>
     <string name="call_mute_label">Demp</string>
+    <string name="call_unmute_label">Slå på lyd</string>
     <string name="call_speaker_label">Høyttaler</string>
     <string name="incoming_call_label">INNKOMMENDE ANROP</string>
     <string name="incoming_unknown_number">Ukjent nummer</string>

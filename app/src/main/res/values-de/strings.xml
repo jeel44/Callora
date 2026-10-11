@@ -57,6 +57,7 @@
     <string name="call_tag_saved_contact">Gespeicherter Kontakt</string>
     <string name="call_minimize_content_description">Minimieren</string>
     <string name="call_mute_label">Stumm</string>
+    <string name="call_unmute_label">Stummschaltung aufheben</string>
     <string name="call_speaker_label">Lautsprecher</string>
     <string name="incoming_call_label">EINGEHENDER ANRUF</string>
     <string name="incoming_unknown_number">Unbekannte Nummer</string>

@@ -27,6 +27,7 @@ fun IncomingKnownScreen(
     onUrgent: () -> Unit,
     modifier: Modifier = Modifier,
     simAccountLabel: String? = null,
+    simAccountColor: Int? = null,
 ) {
     IncomingCallLayout(
         isResolvingIdentity = isResolvingIdentity,
@@ -36,6 +37,7 @@ fun IncomingKnownScreen(
         isSpam = false,
         tagText = if (isSavedContact) stringResource(R.string.call_tag_saved_contact) else null,
         simAccountLabel = simAccountLabel,
+        simAccountColor = simAccountColor,
         middleButtonIcon = Icons.AutoMirrored.Filled.Message,
         middleButtonLabel = stringResource(R.string.incoming_message_label),
         onMiddleButtonClick = onMessage,

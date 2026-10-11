@@ -6,4 +6,7 @@ data class CallHistoryEntry(
     val timestamp: Long,
     val callType: CallType,
     val durationSeconds: Long,
+    // Same as RecentCallEntry.simLabel/simColor — null unless on a multi-SIM device.
+    val simLabel: String? = null,
+    val simColor: Int? = null,
 )

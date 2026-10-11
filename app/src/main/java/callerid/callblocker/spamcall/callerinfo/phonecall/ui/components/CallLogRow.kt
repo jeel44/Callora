@@ -100,7 +100,12 @@ fun CallLogRow(
                     color = MaterialTheme.extendedColors.mutedText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                call.simLabel?.let { simLabel ->
+                    Spacer(modifier = Modifier.width(8.dp))
+                    SimCallLogIndicator(label = simLabel, color = call.simColor)
+                }
             }
         }
         Spacer(modifier = Modifier.width(12.dp))

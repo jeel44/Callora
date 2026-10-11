@@ -2,6 +2,7 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.home
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
@@ -103,7 +105,11 @@ fun HomeScreen(
 
     fun requestCallLogPermissions() {
         callLogPermissionLauncher.launch(
-            arrayOf(Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_PHONE_STATE),
+            arrayOf(
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.READ_PHONE_NUMBERS,
+            ),
         )
     }
 
@@ -117,6 +123,16 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         if (!PermissionPromptRepository().hasBeenShown(context, PermissionPromptKind.CALL_LOG)) {
             showCallLogPrompt = true
+        } else if (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) ==
+            PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_NUMBERS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            // Installs that saw the one-time prompt before READ_PHONE_NUMBERS joined the bundle:
+            // it's in the same Phone group as the already-granted READ_PHONE_STATE, so the system
+            // grants it without showing a dialog.
+            callLogPermissionLauncher.launch(arrayOf(Manifest.permission.READ_PHONE_NUMBERS))
         }
     }
 
@@ -309,7 +325,11 @@ fun HomeScreen(
             lottieAsset = "calllog_permission_preview.json",
             heading = stringResource(R.string.home_call_log_permission_heading),
             subtext = stringResource(R.string.home_call_log_permission_subtext),
-            permissions = arrayOf(Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_PHONE_STATE),
+            permissions = arrayOf(
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.READ_PHONE_NUMBERS,
+            ),
             onAllowAccess = {
                 showCallLogPrompt = false
                 coroutineScope.launch {

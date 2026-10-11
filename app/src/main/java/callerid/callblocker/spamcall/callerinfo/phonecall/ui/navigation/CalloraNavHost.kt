@@ -53,6 +53,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallAccount
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getCallCapableAccounts
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getDefaultOutgoingAccount
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallBannerHost
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SimPickerBottomSheet
@@ -299,14 +300,21 @@ private fun CalloraNavHostContent(
      * CALL_PHONE permission popup. On a single-SIM device (or READ_PHONE_STATE not granted —
      * see getCallCapableAccounts) this is a no-op wrapper: fewer than 2 call-capable accounts
      * means [proceedWithCall] fires immediately with a null handle, identical to pre-dual-SIM
-     * behavior. Only a genuinely multi-SIM device (2+ accounts) shows the picker first.
+     * behavior. On a multi-SIM device (2+ accounts), the user's system default calling SIM
+     * (Settings → SIMs → Calls, see getDefaultOutgoingAccount) is used directly when one is set;
+     * the picker only appears when it's "Ask every time" (no default).
      */
     val placeCallWithSimCheck: (String) -> Unit = { phoneNumber ->
         val accounts = getCallCapableAccounts(context)
         if (accounts.size < 2) {
             proceedWithCall(phoneNumber, null)
         } else {
-            pendingSimPicker = SimPickerRequest(phoneNumber, accounts)
+            val defaultAccount = getDefaultOutgoingAccount(context, accounts)
+            if (defaultAccount != null) {
+                proceedWithCall(phoneNumber, defaultAccount.handle)
+            } else {
+                pendingSimPicker = SimPickerRequest(phoneNumber, accounts)
+            }
         }
     }
 
@@ -695,6 +703,7 @@ private fun CalloraNavHostContent(
                     phoneNumber = callInfo.phoneNumber,
                     photoUri = callInfo.photoUri,
                     simAccountLabel = callInfo.simAccountLabel,
+                    simAccountColor = callInfo.simAccountColor,
                     onDecline = onDecline,
                     onAnswer = { viewModel.answer() },
                     onBlock = { viewModel.blockCaller() },
@@ -707,6 +716,7 @@ private fun CalloraNavHostContent(
                     phoneNumber = callInfo.phoneNumber,
                     photoUri = callInfo.photoUri,
                     simAccountLabel = callInfo.simAccountLabel,
+                    simAccountColor = callInfo.simAccountColor,
                     isSavedContact = callInfo.displayName != null,
                     onDecline = onDecline,
                     onAnswer = { viewModel.answer() },

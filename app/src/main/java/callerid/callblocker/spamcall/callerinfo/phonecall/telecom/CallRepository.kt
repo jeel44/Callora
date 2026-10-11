@@ -38,10 +38,13 @@ data class ActiveCallInfo(
     val photoUri: String? = null,
     val isIncoming: Boolean = false,
     val isResolvingContactName: Boolean = false,
-    // Which SIM/line this call is on — see resolveAccountLabel. Only ever non-null on a genuinely
+    // Which SIM/line this call is on — see resolveAccount. Only ever non-null on a genuinely
     // multi-SIM device; single-SIM devices always see null here, so callers (Incoming Call/Active
     // Call) render nothing extra for the common case.
     val simAccountLabel: String? = null,
+    // That SIM's color (ARGB) — the system's own per-SIM tint where available, see
+    // PhoneAccounts.getCallCapableAccounts. Non-null exactly when [simAccountLabel] is.
+    val simAccountColor: Int? = null,
 )
 
 /** [displayName] is a snapshot of [ActiveCallInfo.displayName] taken at the moment the call is
@@ -103,7 +106,7 @@ object CallRepository {
     // Resolved once per call (in onCallAdded) from the real Call.Details.accountHandle — fixed
     // for the lifetime of a given Call, so unlike displayName/photoUri this never needs
     // re-resolving as the call transitions Dialing -> Ringing -> Active.
-    private var trackedCallSimAccountLabel: String? = null
+    private var trackedCallSimAccount: CallAccount? = null
 
     private val _callState = MutableStateFlow(emptyState())
     val callState: StateFlow<ActiveCallInfo> = _callState.asStateFlow()
@@ -218,7 +221,7 @@ object CallRepository {
         trackedCall?.unregisterCallback(callback)
         trackedCall = null
         trackedCallIsIncoming = false
-        trackedCallSimAccountLabel = null
+        trackedCallSimAccount = null
         suppressPostCallPopup = false
         _quickReplies.value = emptyList()
         _callState.value = emptyState()
@@ -251,7 +254,7 @@ object CallRepository {
             call.state == Call.STATE_SIMULATED_RINGING
         // appContext is already set by this point — attachContext runs synchronously in
         // InCallServiceImpl.onCreate(), strictly before the system can ever deliver a Call here.
-        trackedCallSimAccountLabel = appContext?.let { resolveAccountLabel(it, call.details?.accountHandle) }
+        trackedCallSimAccount = appContext?.let { resolveAccount(it, call.details?.accountHandle) }
         suppressPostCallPopup = false
         _quickReplies.value = call.cannedTextResponses.orEmpty()
         call.registerCallback(callback)
@@ -363,7 +366,8 @@ object CallRepository {
             } else {
                 resolvedNumber != null && cached == null
             },
-            simAccountLabel = trackedCallSimAccountLabel,
+            simAccountLabel = trackedCallSimAccount?.label,
+            simAccountColor = trackedCallSimAccount?.color,
         )
         if (_callState.value.isResolvingContactName && resolvedNumber != null) resolveDisplayName(resolvedNumber)
         updateActiveCallUiState(uiState, resolvedNumber, connectTimestamp)

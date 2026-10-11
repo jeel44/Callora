@@ -5,11 +5,19 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Settings shows the device's own number (TelephonyManager.line1Number), which needs this on
+         API 26+. Requested together with READ_PHONE_STATE in Home's call-log permission bundle. -->
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- InCallServiceImpl goes foreground (type phoneCall) while a call is up: Android 12+ only
+         accepts a CallStyle notification from a foreground service (or one with a full-screen
+         intent). phoneCall is allowed because this app holds MANAGE_OWN_CALLS / the dialer role. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
 
     <application
         android:name=".CalloraApplication"
@@ -91,6 +99,7 @@
         <service
             android:name=".telecom.InCallServiceImpl"
             android:exported="true"
+            android:foregroundServiceType="phoneCall"
             android:permission="android.permission.BIND_INCALL_SERVICE">
             <intent-filter>
                 <action android:name="android.telecom.InCallService" />

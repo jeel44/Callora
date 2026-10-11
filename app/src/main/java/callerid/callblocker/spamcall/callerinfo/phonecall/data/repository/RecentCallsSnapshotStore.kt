@@ -115,6 +115,8 @@ object RecentCallsSnapshotStore {
         put("callType", entry.callType.name)
         put("photoUri", entry.photoUri ?: JSONObject.NULL)
         put("isSpam", entry.isSpam)
+        put("simLabel", entry.simLabel ?: JSONObject.NULL)
+        put("simColor", entry.simColor ?: JSONObject.NULL)
     }
 
     private fun parse(json: JSONObject): RecentCallsSnapshot {
@@ -130,6 +132,8 @@ object RecentCallsSnapshotStore {
                 callType = runCatching { CallType.valueOf(item.getString("callType")) }.getOrDefault(CallType.OTHER),
                 photoUri = item.optStringOrNull("photoUri"),
                 isSpam = item.optBoolean("isSpam", false),
+                simLabel = if (item.has("simLabel")) item.optStringOrNull("simLabel") else null,
+                simColor = if (item.has("simColor") && !item.isNull("simColor")) item.getInt("simColor") else null,
             )
         }
         return RecentCallsSnapshot(
