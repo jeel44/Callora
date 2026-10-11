@@ -212,8 +212,16 @@ fun SettingsScreen(
                                 title = stringResource(R.string.settings_row_help_feedback),
                                 onClick = {
                                     try {
+                                        // Build-2 QA #23: this used to go to a developer's
+                                        // personal Gmail address, found by checking the APK
+                                        // rather than tapping the row in the app — every user's
+                                        // feedback was landing in one person's personal inbox
+                                        // rather than a real, monitored support channel.
                                         context.startExternalActivity(
-                                            Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:tarangsutariya3440@gmail.com")).apply {
+                                            Intent(
+                                                Intent.ACTION_SENDTO,
+                                                Uri.parse("mailto:${context.getString(R.string.settings_feedback_email_address)}"),
+                                            ).apply {
                                                 putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.settings_feedback_email_subject))
                                             },
                                         )

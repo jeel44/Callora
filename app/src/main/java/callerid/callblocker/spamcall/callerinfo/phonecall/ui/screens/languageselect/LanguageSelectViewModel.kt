@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.InlineNativeAdController
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.DEFAULT_LANGUAGE_TAG
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.LanguagePreferencesRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SupportedLanguages
 import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,9 +34,12 @@ class LanguageSelectViewModel(
 
     private val isFromSettings: Boolean = savedStateHandle.get<Boolean>("fromSettings") ?: false
 
-    // Onboarding: starts null — the user must actively pick a language (Continue is disabled
-    // until they do). Settings: pre-filled from the saved language in init below, so the current
-    // choice is checked and Continue is enabled from the start. Held here rather than read back from DataStore: selectLanguage() applies
+    // Onboarding: pre-filled with the device's own current language (falling back to
+    // DEFAULT_LANGUAGE_TAG) via [selectLanguage] in init below — build-2 QA N4 was that nothing
+    // was ever preselected, so Continue stayed disabled and gave no hint at all about what to do.
+    // The user can still tap a different row before continuing. Settings: pre-filled from the
+    // saved language in init below instead, so the current choice is checked and Continue is
+    // enabled from the start. Held here rather than read back from DataStore: selectLanguage() applies
     // the locale immediately, which recreates the Activity, and this ViewModel (unlike the
     // composition) survives that recreation, so the pick isn't lost.
     private val _selectedLanguageTag = MutableStateFlow<String?>(null)
@@ -62,8 +68,24 @@ class LanguageSelectViewModel(
                 // already tapped something in the meantime.
                 if (_selectedLanguageTag.value == null) _selectedLanguageTag.value = savedTag
             }
+        } else {
+            // First-run onboarding: preselect whichever supported language best matches the
+            // device's own current language — the normal "your system language, already
+            // highlighted" default every real language-picker shows, rather than nothing at all.
+            selectLanguage(bestMatchingSupportedTag())
         }
         nativeAdController.start()
+    }
+
+    /** The device's current language, resolved to one of [SupportedLanguages]' tags, or
+     * [DEFAULT_LANGUAGE_TAG] if the device's language isn't one Callora is localized into. Norsk
+     * is matched against both the macrolanguage tag ("no") and the Bokmål tag this app actually
+     * ships under ("nb") — Android devices commonly report the former. */
+    private fun bestMatchingSupportedTag(): String {
+        val deviceLanguage = Locale.getDefault().language
+        val match = SupportedLanguages.firstOrNull { it.languageTag == deviceLanguage }
+            ?: SupportedLanguages.firstOrNull { deviceLanguage == "no" && it.languageTag == "nb" }
+        return match?.languageTag ?: DEFAULT_LANGUAGE_TAG
     }
 
     /**

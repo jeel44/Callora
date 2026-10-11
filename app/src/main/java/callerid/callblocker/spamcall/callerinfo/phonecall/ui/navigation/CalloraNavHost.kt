@@ -3,11 +3,14 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.navigation
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.telecom.PhoneAccountHandle
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import android.os.Bundle
@@ -43,6 +46,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
@@ -353,7 +357,21 @@ private fun CalloraNavHostContent(
      */
     val attemptPlaceCall: (String) -> Unit = { phoneNumber ->
         coroutineScope.launch {
-            if (PermissionPromptRepository().hasBeenShown(context, PermissionPromptKind.CALL_PHONE)) {
+            // Build-2 QA N5: "hasBeenShown" tracks whether *this app's own popup* was ever shown
+            // — not whether CALL_PHONE is actually granted. Holding the DIALER role auto-grants
+            // CALL_PHONE (and the other phone-related runtime permissions) without ever going
+            // through this popup's RequestPermission() launcher, so a device that became default
+            // dialer before ever placing a call through here hit "not shown yet" with the
+            // permission already granted — showing "Allow phone access" mid-call for a permission
+            // already held. Checking the real grant first short-circuits that, and still records
+            // it as shown so the popup logic as a whole stays consistent from here on.
+            val callPhoneGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) ==
+                PackageManager.PERMISSION_GRANTED
+            if (
+                PermissionPromptRepository().hasBeenShown(context, PermissionPromptKind.CALL_PHONE) ||
+                callPhoneGranted
+            ) {
+                PermissionPromptRepository().markShown(context, PermissionPromptKind.CALL_PHONE)
                 placeCallWithSimCheck(phoneNumber)
             } else {
                 pendingCallPhoneNumberForPermission = phoneNumber
@@ -578,9 +596,20 @@ private fun CalloraNavHostContent(
                 onCall = { attemptPlaceCall(phoneNumber) },
             )
         }
-        composable(
+        // Build-2 QA N7: as a plain composable() destination, navigating here replaced
+        // ContactDetailScreen's whole composition in the back stack — so the "dimmed scrim over
+        // the previous screen" BlockConfirmScreen's own Box draws was dimming nothing but the
+        // NavHost's own blank background, and the contact screen it was supposed to be confirming
+        // over had already been torn down underneath it. A dialog() destination instead renders
+        // this as a real Android Dialog layered on top of whatever's already on screen, which
+        // stays composed and visible behind it, exactly like the scrim was always meant to dim.
+        dialog(
             route = Routes.BLOCK_CONFIRM,
             arguments = listOf(navArgument("phoneNumber") { type = NavType.StringType }),
+            // BlockConfirmScreen's own Box already fills the screen and draws the scrim/sheet
+            // itself — the platform dialog window must not additionally constrain its width or
+            // paint its own dim/background on top of that.
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             BlockConfirmScreen(
                 onBlockConfirmed = { navController.popBackStack() },

@@ -69,8 +69,10 @@ fun LanguageSelectScreen(
             ) {
                 Button(
                     onClick = onContinue,
-                    // Nothing is pre-selected (see LanguageSelectViewModel), so Continue stays
-                    // disabled until the user taps a language.
+                    // A language is always preselected by the time this renders (the device's own
+                    // language, or DEFAULT_LANGUAGE_TAG — see LanguageSelectViewModel's init), so
+                    // this is really just a safety net for the first composition before that
+                    // StateFlow emits, not a real everyday "stuck disabled" state (build-2 QA N4).
                     enabled = selectedLanguageTag != null,
                     modifier = Modifier
                         .fillMaxWidth()

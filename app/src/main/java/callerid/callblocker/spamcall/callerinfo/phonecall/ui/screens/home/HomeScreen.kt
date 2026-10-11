@@ -318,7 +318,19 @@ fun HomeScreen(
                         }
                     }
                 }
-                item { Spacer(modifier = Modifier.height(8.dp)) }
+                // Build-2 QA N6: "tap to dial" FAB overlaps the info icon of the last visible
+                // Recent row. Scaffold floats the FAB above the bottomBar, lifted further by the
+                // banner slot's own height (see its padding(bottom = bannerSlotHeightDp.dp)
+                // above) — so with a banner showing, the FAB sits clear above it with nothing
+                // from the list underneath it at all. Only with no banner (bannerSlotHeightDp ==
+                // 0, e.g. the placement is off or still loading) does the FAB end up floating
+                // directly over the list's last row instead, since the list's weight(1f) then
+                // fills all the way down to the bottom nav. Reserving the FAB's own footprint
+                // (56dp) plus its default Scaffold margin as trailing blank space exactly in that
+                // case keeps the last row's info icon clear without leaving a gap when the banner
+                // is already doing that job.
+                val fabClearanceDp = if (bannerSlotHeightDp == 0) 88.dp else 8.dp
+                item { Spacer(modifier = Modifier.height(fabClearanceDp)) }
             }
             // Below the list, above the bottom nav (Scaffold's innerPadding already excludes the
             // nav bar): the list's weight(1f) shrinks to make room, so nothing scrolls under it.
