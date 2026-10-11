@@ -423,13 +423,16 @@ object CallRepository {
     }
 
     /** Derives the app-wide "ongoing call" fact (banner/notification) from the same transition
-     * [applyCallState] just computed. Covers DIALING/RINGING/ACTIVE of an OUTGOING call — an
-     * incoming ringing call is deliberately excluded, since that already forces its own full-
-     * screen navigation (see CalloraNavHost) and doesn't need a separate "get back to it" affordance. */
+     * [applyCallState] just computed. Covers DIALING/RINGING of an OUTGOING call — a *ringing*
+     * incoming call is excluded, since that already forces its own full-screen navigation (see
+     * CalloraNavHost) and doesn't need a separate "get back to it" affordance. ACTIVE is always
+     * covered regardless of direction: once an incoming call is answered it's indistinguishable
+     * from an outgoing one — minimizing it needs the same way back. */
     private fun updateActiveCallUiState(uiState: CallUiState, phoneNumber: String?, connectTimestamp: Long?) {
-        val isOutgoingInProgress = !trackedCallIsIncoming &&
-            (uiState == CallUiState.DIALING || uiState == CallUiState.RINGING || uiState == CallUiState.ACTIVE)
-        if (!isOutgoingInProgress) {
+        val isOutgoingRingingOrDialing = !trackedCallIsIncoming &&
+            (uiState == CallUiState.DIALING || uiState == CallUiState.RINGING)
+        val shouldShow = uiState == CallUiState.ACTIVE || isOutgoingRingingOrDialing
+        if (!shouldShow) {
             _activeCallUiState.value = null
             return
         }

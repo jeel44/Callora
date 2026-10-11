@@ -90,7 +90,7 @@ class MainActivity : AppCompatActivity() {
         applyIncomingCallWindowFlags(intent)
         observeCallStateForWindowFlagCleanup()
         pendingDeepLinkRoute = routeForIntent(intent)
-        pendingCallPhoneNumber = intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)
+        pendingCallPhoneNumber = phoneNumberFromIntent(intent)
         Log.i(DIAG_TAG, "onCreate: pendingDeepLinkRoute=$pendingDeepLinkRoute")
         setContent {
             CalloraTheme(darkTheme = ThemeState.isDarkMode) {
@@ -153,7 +153,7 @@ class MainActivity : AppCompatActivity() {
         suppressAppOpenAdForCallIntent(intent)
         applyIncomingCallWindowFlags(intent)
         pendingDeepLinkRoute = routeForIntent(intent)
-        pendingCallPhoneNumber = intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)
+        pendingCallPhoneNumber = phoneNumberFromIntent(intent)
         Log.i(DIAG_TAG, "onNewIntent: pendingDeepLinkRoute=$pendingDeepLinkRoute")
     }
 
@@ -255,6 +255,21 @@ class MainActivity : AppCompatActivity() {
      *    notification now also shows during an outgoing call's Dialing/Ringing phase — tapping it
      *    then must land on OutgoingDialingScreen, not a blank/wrong Active Call screen with no
      *    active call to show. */
+    /** The number to place a call to, from either this app's own [EXTRA_PLACE_CALL_PHONE_NUMBER]
+     * (CallEndedActivity's "Call" action) or a system `tel:`/`android.intent.action.DIAL` deep
+     * link (another app's "Call" button, a phone number link in a message, etc. — Callora is a
+     * default-dialer candidate and declares a `tel:` intent-filter in the manifest, so these
+     * must actually be handled, not silently dropped on Home). Goes through the same
+     * attemptPlaceCall gate as every other call-placing entry point (see [placeCallIntent]'s own
+     * doc), so a deep-link call still gets the CALL_PHONE prompt / already-on-a-call snackbar. */
+    private fun phoneNumberFromIntent(intent: Intent): String? {
+        intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)?.let { return it }
+        if (intent.data?.scheme == "tel") {
+            return intent.data?.schemeSpecificPart
+        }
+        return null
+    }
+
     private fun routeForIntent(intent: Intent): String? {
         if (intent.getBooleanExtra(EXTRA_INCOMING_CALL, false)) return Routes.INCOMING_CALL
         // CallEndedActivity's "Contact" action — opens the real contact_detail screen for a
