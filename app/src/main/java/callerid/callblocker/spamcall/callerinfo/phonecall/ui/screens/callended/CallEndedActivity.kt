@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallSummary
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.EndedCallDetails
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.PostCallMonitor
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraTheme
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -30,7 +32,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
  * whatever was behind it stays visible, dimmed, under the card — [CallEndedRoute] draws that dim
  * scrim itself in Compose.
  */
-class CallEndedActivity : AppCompatActivity() {
+open class CallEndedActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,11 +55,32 @@ class CallEndedActivity : AppCompatActivity() {
             )
         }
 
-        val phoneNumber = intent.getStringExtra(EXTRA_PHONE_NUMBER)
-        if (phoneNumber == null) {
-            finish()
-            return
+        val launchDetails = intent.getStringExtra(EXTRA_PHONE_NUMBER)?.let { phoneNumber ->
+            EndedCallDetails(
+                phoneNumber = phoneNumber,
+                isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false),
+                durationSeconds = intent.getLongExtra(EXTRA_DURATION_SECONDS, 0L),
+                wasDeclined = intent.getBooleanExtra(EXTRA_WAS_DECLINED, false),
+            )
         }
+        if (launchDetails != null) {
+            showCallEnded(launchDetails, intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis()))
+        } else {
+            onCreateWithoutDetails()
+        }
+    }
+
+    /** Launched without the extras [launch] sets — nothing real to show. PostCallActivity
+     * overrides this to resolve the call from Telecom's post-call intent instead. */
+    protected open fun onCreateWithoutDetails() {
+        finish()
+    }
+
+    protected fun showCallEnded(details: EndedCallDetails, endedAtMillis: Long) {
+        val phoneNumber = details.phoneNumber
+        val isIncoming = details.isIncoming
+        val durationSeconds = details.durationSeconds
+        val wasDeclined = details.wasDeclined
 
         // This Activity sits outside CalloraNavHost's Compose nav graph entirely, so the central
         // OnDestinationChangedListener there (see CalloraNavHost) never sees it — this is the
@@ -72,11 +95,6 @@ class CallEndedActivity : AppCompatActivity() {
                 putString(FirebaseAnalytics.Param.SCREEN_CLASS, "call_ended")
             },
         )
-
-        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
-        val durationSeconds = intent.getLongExtra(EXTRA_DURATION_SECONDS, 0L)
-        val endedAtMillis = intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis())
-        val wasDeclined = intent.getBooleanExtra(EXTRA_WAS_DECLINED, false)
 
         setContent {
             CalloraTheme(darkTheme = ThemeState.isDarkMode) {
@@ -132,6 +150,28 @@ class CallEndedActivity : AppCompatActivity() {
                 putExtra(EXTRA_WAS_DECLINED, summary.wasDeclined)
             }
             context.startActivity(intent)
+        }
+
+        /**
+         * The not-default-phone-app path (CallMonitorService / PostCallPhoneStateReceiver): works
+         * out what the call that just ended was and shows it, unless another trigger already did
+         * or there's nothing to show — see [PostCallMonitor].
+         */
+        suspend fun launchForEndedCall(context: Context) {
+            if (!PostCallMonitor.tryClaim()) return
+            val details = PostCallMonitor.resolveEndedCall(context) ?: return
+            launch(
+                context = context,
+                summary = CallSummary(
+                    phoneNumber = details.phoneNumber,
+                    displayName = null,
+                    durationSeconds = details.durationSeconds,
+                    isContactResolved = false,
+                    wasDeclined = details.wasDeclined,
+                ),
+                isIncoming = details.isIncoming,
+                endedAtMillis = System.currentTimeMillis(),
+            )
         }
     }
 }

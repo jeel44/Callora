@@ -29,6 +29,10 @@ data class CallLogPage(
     val rawRowCount: Int,
 )
 
+/** One finished call as the system call log recorded it — [type] is a raw [CallLog.Calls] TYPE
+ * constant. See [CallLogRepository.getLatestCall]. */
+data class EndedCall(val phoneNumber: String, val type: Int, val durationSeconds: Long, val startedAtMillis: Long)
+
 /** Reads from the device's Call Log provider. Every call is a blocking ContentResolver query — run on Dispatchers.IO. */
 class CallLogRepository(private val contactsRepository: ContactsRepository = ContactsRepository()) {
 
@@ -311,6 +315,37 @@ class CallLogRepository(private val contactsRepository: ContactsRepository = Con
     /** Call-capable accounts to tag rows with — empty on a single-SIM device (or without
      * READ_PHONE_STATE), so rows there never carry a SIM label, matching SimAccountLabel. Fetched
      * once per query, not per row. */
+    /**
+     * The newest call-log row, or null if there is none or it has no usable number
+     * (private/unknown caller). Used by PostCallMonitor, which only learns "a call just ended"
+     * from the system and reads what the call actually was from here — the caller decides whether
+     * this row really is that call (the system writes it shortly after the call ends).
+     */
+    fun getLatestCall(context: Context): EndedCall? {
+        if (!CallDataPermissions.hasCallLog(context)) return null
+        val queryUri = CallLog.Calls.CONTENT_URI.buildUpon()
+            .appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, "1")
+            .build()
+        context.contentResolver.query(
+            queryUri,
+            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DURATION, CallLog.Calls.DATE),
+            null,
+            null,
+            "${CallLog.Calls.DATE} DESC",
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            val number = cursor.getString(0)
+            if (number.isNullOrBlank() || number == "-1" || number == "-2") return null
+            return EndedCall(
+                phoneNumber = number,
+                type = cursor.getInt(1),
+                durationSeconds = cursor.getLong(2),
+                startedAtMillis = cursor.getLong(3),
+            )
+        }
+        return null
+    }
+
     private fun multiSimAccounts(context: Context): List<CallAccount> =
         getCallCapableAccounts(context).takeIf { it.size >= 2 }.orEmpty()
 

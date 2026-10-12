@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,12 +22,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Block
@@ -44,7 +48,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +66,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,8 +76,11 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.BlockedNumbersRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallLogRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallNotesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SpamMarkRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallHistoryEntry
+import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamCategory
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamMark
@@ -85,6 +95,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.LightSurfaceV
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatPhoneNumberForDisplay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelativeDayLabel
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.openWhatsAppChat
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
@@ -106,10 +117,15 @@ private val NormalGradientEnd = CalloraAccent
 private val SpamButtonColor = Color(0xFFB71C1C)
 private val NormalButtonColor = Color(0xFF0D47A1)
 
+// How many of this number's latest calls the card lists under "Recent calls".
+private const val RECENT_CALLS_SHOWN = 3
+
 private data class CallEndedRealData(
     val contact: Contact?,
     val spamMark: SpamMark?,
     val isBlocked: Boolean,
+    val recentCalls: List<CallHistoryEntry>,
+    val note: String,
 )
 
 /** Single source of truth for "was this call ever answered" — same check
@@ -177,6 +193,8 @@ fun CallEndedRoute(
                 contact = contactsRepository.getContactByPhoneNumber(context, phoneNumber, includeDetails = true),
                 spamMark = spamMarkRepository.getSpamMark(context, phoneNumber),
                 isBlocked = blockedNumbersRepository.isNumberBlocked(context, phoneNumber),
+                recentCalls = CallLogRepository().getCallHistoryForNumber(context, phoneNumber, limit = RECENT_CALLS_SHOWN),
+                note = CallNotesRepository().getNote(context, phoneNumber),
             )
         }
         data = loaded
@@ -230,7 +248,9 @@ fun CallEndedRoute(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .systemBarsPadding(),
+                    .systemBarsPadding()
+                    // The note field: keeps it above the keyboard.
+                    .imePadding(),
                 verticalArrangement = Arrangement.Center,
             ) {
                 CallEndedCard(
@@ -243,6 +263,19 @@ fun CallEndedRoute(
                     spamMark = data?.spamMark,
                     isBlocked = isBlocked,
                     spamReported = spamReported,
+                    recentCalls = data?.recentCalls.orEmpty(),
+                    savedNote = data?.note.orEmpty(),
+                    onSaveNote = { note ->
+                        coroutineScope.launch {
+                            withContext(Dispatchers.IO) { CallNotesRepository().setNote(context, phoneNumber, note) }
+                            Toast.makeText(context, R.string.call_ended_note_saved, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onWhatsApp = {
+                        if (!context.openWhatsAppChat(phoneNumber)) {
+                            Toast.makeText(context, R.string.contact_detail_whatsapp_not_installed, Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onDismiss = ::requestDismiss,
                     onCall = { onCall(phoneNumber) },
                     onMessage = {
@@ -329,6 +362,10 @@ private fun CallEndedCard(
     spamMark: SpamMark?,
     isBlocked: Boolean,
     spamReported: Boolean,
+    recentCalls: List<CallHistoryEntry>,
+    savedNote: String,
+    onSaveNote: (String) -> Unit,
+    onWhatsApp: () -> Unit,
     onDismiss: () -> Unit,
     onCall: () -> Unit,
     onMessage: () -> Unit,
@@ -357,7 +394,10 @@ private fun CallEndedCard(
             .padding(vertical = 24.dp)
             .shadow(elevation = 16.dp, shape = CardShape)
             .clip(CardShape)
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.surface)
+            // Recent calls + the note field can make the card taller than a short screen (or
+            // what's left above the keyboard) — it scrolls rather than pushing parts off-screen.
+            .verticalScroll(rememberScrollState()),
     ) {
         HeaderBand(
             isSpam = isSpam,
@@ -417,6 +457,7 @@ private fun CallEndedCard(
                 tint = MaterialTheme.colorScheme.primary,
                 onClick = onMessage,
             )
+            WhatsAppActionButton(onClick = onWhatsApp)
             if (isSpam) {
                 ActionButton(
                     icon = Icons.Filled.Bookmark,
@@ -447,9 +488,125 @@ private fun CallEndedCard(
             )
         }
 
+        if (recentCalls.isNotEmpty()) {
+            RecentCallsSection(recentCalls)
+        }
+
+        CallNoteSection(savedNote = savedNote, onSaveNote = onSaveNote)
+
         if (!isSpam) {
             SpamReportSection(reported = spamReported, onReportSpam = onReportSpam, onDismiss = onDismiss)
         }
+    }
+}
+
+/** This number's latest calls (the one that just ended first), so the card answers "when did we
+ * last speak / how often do they call" without opening Contact Detail. */
+@Composable
+private fun RecentCallsSection(recentCalls: List<CallHistoryEntry>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.call_ended_recent_calls_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        recentCalls.forEach { call ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = when (call.callType) {
+                        CallType.INCOMING -> stringResource(R.string.contact_detail_call_type_incoming)
+                        CallType.OUTGOING -> stringResource(R.string.contact_detail_call_type_outgoing)
+                        CallType.MISSED -> stringResource(R.string.call_status_missed)
+                        CallType.OTHER -> stringResource(R.string.contact_detail_call_type_other)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (call.callType == CallType.MISSED) {
+                        MaterialTheme.extendedColors.spam
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = if (call.durationSeconds > 0L) {
+                        stringResource(
+                            R.string.call_ended_status_line,
+                            formatRelativeShort(call.timestamp),
+                            formatCallTimer(call.durationSeconds.toInt()),
+                        )
+                    } else {
+                        formatRelativeShort(call.timestamp)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.extendedColors.onSurfaceSoft,
+                )
+            }
+        }
+    }
+}
+
+/** A free-text note about this number (see [CallNotesRepository]) — shows the saved one, and
+ * offers Save only while the text differs from it. */
+@Composable
+private fun CallNoteSection(savedNote: String, onSaveNote: (String) -> Unit) {
+    var note by remember(savedNote) { mutableStateOf(savedNote) }
+    var lastSaved by remember(savedNote) { mutableStateOf(savedNote) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 12.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(stringResource(R.string.call_ended_note_placeholder)) },
+            textStyle = MaterialTheme.typography.bodyMedium,
+            maxLines = 3,
+        )
+        if (note.trim() != lastSaved) {
+            TextButton(
+                onClick = {
+                    lastSaved = note.trim()
+                    onSaveNote(note)
+                },
+            ) {
+                Text(text = stringResource(R.string.call_ended_note_save), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+/** Same shape as [ActionButton], but with WhatsApp's full-colour logo — tinting would flatten it. */
+@Composable
+private fun WhatsAppActionButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.contact_detail_action_whatsapp)
+    Column(
+        modifier = Modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_whatsapp),
+            contentDescription = label,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

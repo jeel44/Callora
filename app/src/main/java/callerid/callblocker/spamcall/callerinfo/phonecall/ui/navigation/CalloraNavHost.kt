@@ -61,6 +61,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getCallCapableAccounts
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getDefaultOutgoingAccount
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.AutostartPromptDialog
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallBannerHost
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SimPickerBottomSheet
@@ -88,6 +89,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.outgoingdia
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.search.SearchScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.SetDefaultScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.isDialerRoleHeld
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.hasPendingSetupRequests
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.settings.SettingsScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.spamcenter.SpamCenterScreen
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.splash.SplashScreen
@@ -140,7 +142,13 @@ private fun startDestinationFor(context: Context, onboardingComplete: Boolean): 
         return Routes.INCOMING_CALL
     }
     if (!onboardingComplete) return Routes.SPLASH
-    return if (!isDialerRoleHeld(context)) Routes.SET_DEFAULT else Routes.HOME
+    // Set Default is a hard gate (default phone app is required to use the app), and also the
+    // one place its follow-up requests (CALL_SCREENING role, display over other apps) get made.
+    return if (!isDialerRoleHeld(context) || hasPendingSetupRequests(context)) {
+        Routes.SET_DEFAULT
+    } else {
+        Routes.HOME
+    }
 }
 
 @Composable
@@ -449,9 +457,11 @@ private fun CalloraNavHostContent(
                         DIAG_TAG,
                         "SplashScreen.onTimeout fired: backstack=" +
                             navController.currentBackStack.value.map { it.destination.route } +
-                            ", about to popUpTo(SPLASH, inclusive=true) and navigate to LANGUAGE_SELECT",
+                            ", about to popUpTo(SPLASH, inclusive=true) and navigate to SET_DEFAULT",
                     )
-                    navController.navigate(Routes.languageSelectRoute(fromSettings = false)) {
+                    // First thing after Splash: the mandatory default-phone-app gate, before
+                    // Language/Onboarding. Set Default's own onContinue carries on from there.
+                    navController.navigate(Routes.SET_DEFAULT) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 },
@@ -502,10 +512,9 @@ private fun CalloraNavHostContent(
         composable(Routes.ONBOARDING_3) {
             Onboarding3Screen(
                 // Persisted the moment Get Started is tapped — before the onboarding interstitial
-                // (if any) is shown, and not after Set Default/Permissions resolve — so an app kill
-                // mid-ad or partway through those two never replays Splash/Language/Onboarding on
-                // the next launch; the resolveStartDestination re-check above already sends a
-                // relaunch straight to whichever of Set Default/Permissions is still outstanding.
+                // (if any) is shown — so an app kill mid-ad never replays Splash/Language/Onboarding
+                // on the next launch. Set Default already happened by this point (it's the gate
+                // right after Splash), so Home is next.
                 onOnboardingFinished = {
                     coroutineScope.launch { OnboardingRepository().markOnboardingComplete(context) }
                 },
@@ -515,7 +524,7 @@ private fun CalloraNavHostContent(
                     // itself off the back stack in its own onTimeout transition above — by this
                     // point Splash is long gone, so popUpTo(SPLASH) here would never find it and
                     // silently pop nothing.
-                    navController.navigate(Routes.SET_DEFAULT) {
+                    navController.navigate(Routes.HOME) {
                         popUpTo(Routes.ONBOARDING_3) { inclusive = true }
                     }
                 },
@@ -527,8 +536,17 @@ private fun CalloraNavHostContent(
             // single back press from Home would land back on Set Default instead of exiting.
             SetDefaultScreen(
                 onContinue = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.SET_DEFAULT) { inclusive = true }
+                    when {
+                        // Opened on top of another screen (Blocked List's "Set as default").
+                        navController.previousBackStackEntry != null -> navController.popBackStack()
+                        // First run: the gate sits between Splash and Language/Onboarding.
+                        OnboardingRepository.cachedIsOnboardingComplete != true ->
+                            navController.navigate(Routes.languageSelectRoute(fromSettings = false)) {
+                                popUpTo(Routes.SET_DEFAULT) { inclusive = true }
+                            }
+                        else -> navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.SET_DEFAULT) { inclusive = true }
+                        }
                     }
                 },
             )
@@ -546,6 +564,7 @@ private fun CalloraNavHostContent(
                 onOpenDialpad = { navController.navigate(Routes.DIALPAD) },
                 onCall = attemptPlaceCall,
             )
+            AutostartPromptDialog()
         }
         composable(Routes.DIALPAD) {
             DialpadScreen(

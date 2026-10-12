@@ -114,6 +114,10 @@
     <string name="call_ended_view_profile">프로필 보기</string>
     <string name="call_ended_no_additional_details">추가 정보가 없습니다</string>
     <string name="call_ended_reported_as_spam">스팸으로 신고됨</string>
+    <string name="call_ended_recent_calls_title">최근 통화</string>
+    <string name="call_ended_note_placeholder">이 통화에 대한 메모 추가</string>
+    <string name="call_ended_note_save">메모 저장</string>
+    <string name="call_ended_note_saved">메모가 저장되었습니다</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">스팸으로 표시됨 · %1$s</string>
     <string name="call_ended_toast_number_blocked">번호가 차단되었습니다</string>
@@ -281,6 +285,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">통화 화면이 이렇게 표시됩니다</string>
     <string name="setdefault_card_subtitle">Caller ID를 기본 전화 앱으로 설정하여 발신자를 자동으로 식별하고 스팸을 차단하세요.</string>
+    <string name="setdefault_required_message">Caller ID를 사용하려면 기본 전화 앱으로 설정해야 합니다.</string>
+    <string name="setdefault_overlay_permission_message">통화 후 Caller ID가 통화 정보를 표시할 수 있도록 다른 앱 위에 표시를 허용하세요.</string>
+    <string name="autostart_prompt_title">자동 시작 허용</string>
+    <string name="autostart_prompt_message">자동 시작을 허용하지 않으면 휴대전화가 앱의 백그라운드 실행을 차단합니다. Caller ID에 대해 켜면 다음 기능이 유지됩니다.</string>
+    <string name="autostart_prompt_benefit_caller_id">모든 수신 전화의 발신자 확인</string>
+    <string name="autostart_prompt_benefit_spam">스팸 전화 자동 차단</string>
+    <string name="autostart_prompt_benefit_call_details">통화 직후 통화 정보 표시</string>
+    <string name="autostart_prompt_allow">허용</string>
+    <string name="call_monitor_channel_name">통화 정보</string>
+    <string name="call_monitor_notification_text">통화 후 통화 정보를 표시할 준비가 되었습니다</string>
     <string name="setdefault_feature_realtime_id">실시간 발신자 식별</string>
     <string name="setdefault_feature_spam_blocked">커뮤니티에서 신고한 스팸 차단</string>
     <string name="setdefault_feature_keep_contacts">기존 연락처를 모두 유지</string>

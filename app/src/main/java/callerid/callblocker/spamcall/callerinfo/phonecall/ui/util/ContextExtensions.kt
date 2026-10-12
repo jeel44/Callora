@@ -3,7 +3,9 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ui.util
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 
 /** The Activity behind a Compose LocalContext (which may be a ContextWrapper around it, e.g. after
@@ -30,4 +32,26 @@ tailrec fun Context.findActivity(): Activity? = when (this) {
 fun Context.startExternalActivity(intent: Intent) {
     AppOpenAdManager.suppressCurrentForeground()
     startActivity(intent)
+}
+
+private val WhatsAppPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
+
+/**
+ * Opens a WhatsApp chat via wa.me, which wants digits only with the country code — so the number
+ * goes through [normalizeDialedNumber] first (bare Indian numbers gain 91). The intent is pinned
+ * to the WhatsApp/WhatsApp Business package: unpinned, wa.me would just open in the browser when
+ * WhatsApp isn't installed. Returns false when neither app is installed.
+ */
+fun Context.openWhatsAppChat(phoneNumber: String): Boolean {
+    val digits = normalizeDialedNumber(phoneNumber).filter { it.isDigit() }
+    val uri = Uri.parse("https://wa.me/$digits")
+    for (packageName in WhatsAppPackages) {
+        try {
+            startExternalActivity(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
+            return true
+        } catch (e: ActivityNotFoundException) {
+            // Not installed — try the next package.
+        }
+    }
+    return false
 }

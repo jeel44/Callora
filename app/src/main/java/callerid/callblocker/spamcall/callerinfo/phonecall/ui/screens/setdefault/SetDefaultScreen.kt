@@ -1,10 +1,17 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault
 
+import android.Manifest
 import android.app.role.RoleManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
-import androidx.activity.compose.BackHandler
+import android.os.SystemClock
+import android.provider.Settings
+import android.telecom.TelecomManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,8 +42,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -55,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
+import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SetupPromptRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraAccent
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraPrimary
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.DarkOnSurfaceSoft
@@ -79,43 +94,146 @@ import kotlin.math.sin
 private const val HeroHeightFraction = 0.56f
 private const val ContentCardHeightFraction = 0.50f
 
+// A role dialog the system suppressed still takes a second or two to report back (measured
+// ~1.3s on an emulator); anything answered faster than this wasn't really read by the user.
+private const val ROLE_DIALOG_SUPPRESSED_MILLIS = 3_000L
+
+// See keepPermissionsLauncher in SetDefaultScreen.
+private val PermissionsToKeepWithoutRole = listOf(
+    Manifest.permission.READ_PHONE_STATE,
+    Manifest.permission.READ_CALL_LOG,
+)
+
 private val ContentCardTopCorner = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
 
+/**
+ * The mandatory gate in front of the whole app: shown straight after Splash on first run, and on
+ * every later launch for as long as the DIALER role isn't held (see CalloraNavHost's
+ * startDestinationFor). There is deliberately no skip path — [onContinue] only ever fires once
+ * the role is really held (or can't be offered on this device at all).
+ *
+ * Two steps, in this order:
+ *  1. DIALER role — required.
+ *  2. CALL_SCREENING role — requested once, right after step 1. Holding it separately means
+ *     CalloraCallScreeningService keeps screening calls even if the user later hands the default
+ *     phone app back to another dialer. Optional: declining it still continues into the app.
+ *  3. "Display over other apps" — requested once, right after step 2. It is what lets
+ *     PostCallPhoneStateReceiver open the call-ended screen from the background when this app is
+ *     no longer the default phone app. Optional as well.
+ */
 @Composable
 fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val dialerRequiredMessage = stringResource(R.string.setdefault_required_message)
 
-    // Checked once per entry to this screen, not re-derived on recomposition — if the role
-    // was already granted (e.g. the app relaunched back into onboarding, or the user is
-    // re-entering this route some other way), skip straight past without rendering anything.
-    val roleAlreadyHeld = remember { isDialerRoleHeld(context) }
-    LaunchedEffect(roleAlreadyHeld) {
-        if (roleAlreadyHeld) onContinue()
+    // Steps 2 and 3's results are never gated on: granted or declined, the app is usable.
+    val overlayPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (Settings.canDrawOverlays(context)) {
+            AnalyticsHelper.logEvent("set_overlay_permission")
+        }
+        onContinue()
     }
 
-    // Whether the role is granted, denied, or the sheet is simply dismissed, onboarding
-    // always moves forward — the user can revisit this from Settings later.
+    val continueAfterCallScreeningRole = {
+        requestOverlayPermission(context, overlayPermissionLauncher, onNotNeeded = onContinue)
+    }
+
+    val callScreeningRequestLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        if (isCallScreeningRoleHeld(context)) {
+            AnalyticsHelper.logEvent("set_call_screening_role")
+        }
+        continueAfterCallScreeningRole()
+    }
+
+    val continueAfterDialerRole = {
+        requestCallScreeningRole(context, callScreeningRequestLauncher, onNotNeeded = continueAfterCallScreeningRole)
+    }
+
+    // Moves on to steps 2/3 the first time the dialer role is seen held, whichever way that is
+    // noticed: already held on entry, the role dialog's result, or coming back to this screen
+    // from system Settings (see the fallback below).
+    var proceeded by remember { mutableStateOf(false) }
+    val proceedIfDialerRoleHeld = {
+        if (!proceeded && isDialerRoleHeld(context)) {
+            proceeded = true
+            continueAfterDialerRole()
+        }
+    }
+
+    // Checked once per entry to this screen, not re-derived on recomposition. Already default
+    // and nothing left to ask (e.g. relaunched mid-onboarding): skip straight past without
+    // rendering anything. Already default but steps 2/3 never requested (an install that became
+    // default before they existed): go straight to them.
+    val dialerRoleHeldOnEntry = remember { isDialerRoleHeld(context) }
+    val followUpPendingOnEntry = remember { hasPendingSetupRequests(context) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) proceedIfDialerRoleHeld()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    var roleRequestedAtMillis by remember { mutableStateOf(0L) }
+    var roleRefusals by remember { mutableStateOf(0) }
     val roleRequestLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) {
         // The system role-request sheet's ActivityResult only says the picker was dismissed, not
         // that DIALER was actually granted (a user can back out or pick a different app and this
         // callback still fires) — so re-checking isDialerRoleHeld here, the same real RoleManager
-        // confirmation resolveStartDestination/roleAlreadyHeld above already use, is what makes
-        // this the real grant point rather than just "the request round-trip completed".
+        // confirmation resolveStartDestination uses, is what makes this the real grant point
+        // rather than just "the request round-trip completed". Not granted: stay on this screen.
         if (isDialerRoleHeld(context)) {
             AnalyticsHelper.logEvent("set_default_dialer")
+            proceedIfDialerRoleHeld()
+        } else {
+            Toast.makeText(context, dialerRequiredMessage, Toast.LENGTH_LONG).show()
+            // Came back without the user having had time to answer: the system refuses to show
+            // the dialog any more ("Don't ask again" was ticked earlier). The only way left to
+            // become default is the system's own Default apps page — without sending the user
+            // there this mandatory screen would be a dead end. A second refusal goes there too,
+            // in case the timing guess misses on a slow device.
+            roleRefusals++
+            if (roleRefusals >= 2 ||
+                SystemClock.elapsedRealtime() - roleRequestedAtMillis < ROLE_DIALOG_SUPPRESSED_MILLIS
+            ) {
+                openDefaultAppsSettings(context)
+            }
         }
-        onContinue()
     }
 
-    if (roleAlreadyHeld) return
+    val launchDialerRoleRequest = {
+        roleRequestedAtMillis = SystemClock.elapsedRealtime()
+        // A device that can't offer the role at all (no telephony) can't use a phone app either,
+        // so it stays on this screen like any other refusal.
+        requestDialerRole(
+            context,
+            roleRequestLauncher,
+            onUnavailable = { Toast.makeText(context, dialerRequiredMessage, Toast.LENGTH_LONG).show() },
+        )
+    }
 
-    // This screen has no back-stack entry below it on a cold start (it's the onboarding start
-    // destination until the role is held), so without this the system Back gesture/button would
-    // finish the Activity and exit the app entirely instead of just skipping the pitch — same
-    // "always move forward" rule the role-request launcher callback above already follows.
-    BackHandler { onContinue() }
+    // Asked BEFORE the role, on purpose. The dialer role grants these permissions by itself, but
+    // a permission that only the role granted is taken away again the moment the user picks
+    // another default phone app — and with them goes everything the not-default call-ended
+    // screen needs (CallMonitorService can't hear calls, the call log can't be read). Granted by
+    // the user first, they are the user's own grant and survive losing the role. Allowed or
+    // denied, the role request follows either way.
+    val keepPermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) { launchDialerRoleRequest() }
+
+    if (dialerRoleHeldOnEntry && !followUpPendingOnEntry) return
+
+    // No BackHandler on purpose: as the start destination, Back exits the app (the role is
+    // required to get any further); reached from Blocked List, Back just returns there.
 
     Box(
         modifier = modifier
@@ -130,8 +248,20 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
         )
 
         SetDefaultContentCard(
-            onSetDefaultClick = { requestDialerRole(context, roleRequestLauncher, onUnavailable = onContinue) },
-            onSkipClick = onContinue,
+            onSetDefaultClick = {
+                if (isDialerRoleHeld(context)) {
+                    proceedIfDialerRoleHeld()
+                } else {
+                    val missingPermissions = PermissionsToKeepWithoutRole.filter {
+                        ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                    }
+                    if (missingPermissions.isEmpty()) {
+                        launchDialerRoleRequest()
+                    } else {
+                        keepPermissionsLauncher.launch(missingPermissions.toTypedArray())
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(ContentCardHeightFraction)
@@ -300,11 +430,7 @@ private fun MockBadge(text: String, tintColor: Color) {
 /** Light content card overlapping the dark hero, holding the pitch copy, feature list, and
  * the CTA that actually requests the DIALER role. */
 @Composable
-private fun SetDefaultContentCard(
-    onSetDefaultClick: () -> Unit,
-    onSkipClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun SetDefaultContentCard(onSetDefaultClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .shadow(elevation = 16.dp, shape = ContentCardTopCorner)
@@ -340,7 +466,8 @@ private fun SetDefaultContentCard(
         Button(
             onClick = onSetDefaultClick,
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .navigationBarsPadding(),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = SetDefaultInk,
@@ -352,23 +479,6 @@ private fun SetDefaultContentCard(
                 text = stringResource(R.string.blocked_list_set_as_default),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-            )
-        }
-
-        // The report's whole complaint was that this screen was a dead end with no way past it
-        // short of the system dialog — this is the explicit skip path, same "move forward
-        // regardless" outcome as declining the RoleManager sheet itself.
-        TextButton(
-            onClick = onSkipClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
-        ) {
-            Text(
-                text = stringResource(R.string.permission_not_now),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = SetDefaultMutedGray,
             )
         }
     }
@@ -393,21 +503,26 @@ private fun FeatureRow(text: String) {
     }
 }
 
-/** RoleManager, and the DIALER role specifically, only exist on API 29+.
+/** Whether this app is the default phone app: the DIALER role on API 29+, TelecomManager's
+ * default dialer package below that (RoleManager doesn't exist there).
  * Internal (not private) so [callerid.callblocker.spamcall.callerinfo.phonecall.ui.navigation.CalloraNavHost]
  * can reuse this exact check when deciding the nav start destination on each launch, rather than
  * duplicating the RoleManager call. */
 internal fun isDialerRoleHeld(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+        val telecomManager = context.getSystemService(TelecomManager::class.java) ?: return false
+        return telecomManager.defaultDialerPackage == context.packageName
+    }
     val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
     return roleManager.isRoleHeld(RoleManager.ROLE_DIALER)
 }
 
 /**
  * Requests the DIALER role — real call-blocking via BlockedNumberContract requires the app
- * to be the default Phone app (CALL_SCREENING role alone throws a SecurityException). Only
- * exists on API 29+, so anything below that — or a device/OEM build where the role isn't
- * offered at all — falls back to [onUnavailable] instead of leaving the button inert.
+ * to be the default Phone app (CALL_SCREENING role alone throws a SecurityException). API 26-28
+ * has no RoleManager and goes through TelecomManager's change-default-dialer dialog instead.
+ * A device/OEM build where the role isn't offered at all (e.g. no telephony) reports
+ * [onUnavailable] instead of leaving the button inert.
  */
 private fun requestDialerRole(
     context: Context,
@@ -425,6 +540,91 @@ private fun requestDialerRole(
             onUnavailable()
         }
     } else {
-        onUnavailable()
+        val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
+            .putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, context.packageName)
+        if (intent.resolveActivity(context.packageManager) != null) {
+            launcher.launch(intent)
+        } else {
+            onUnavailable()
+        }
+    }
+}
+
+/** The system's own "Default apps" page — see SetDefaultScreen's suppressed-dialog fallback. */
+private fun openDefaultAppsSettings(context: Context) {
+    try {
+        context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+    } catch (e: ActivityNotFoundException) {
+        // No such page on this device — nothing further to offer.
+    }
+}
+
+/** The CALL_SCREENING role only exists on API 29+. */
+internal fun isCallScreeningRoleHeld(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+    val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
+    return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+}
+
+/**
+ * True while the one-time CALL_SCREENING request is still owed: the role exists on this device,
+ * isn't held, and this install has never been asked (see [SetupPromptRepository]).
+ * Internal so CalloraNavHost's start-destination check can route an already-default install
+ * through this screen once to get asked.
+ */
+internal fun shouldRequestCallScreeningRole(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+    val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
+    return roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) &&
+        !roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING) &&
+        !SetupPromptRepository.hasCallScreeningRoleBeenRequested(context)
+}
+
+/** Launches the system CALL_SCREENING role dialog if [shouldRequestCallScreeningRole], recording
+ * that it was asked; otherwise [onNotNeeded]. */
+private fun requestCallScreeningRole(
+    context: Context,
+    launcher: ActivityResultLauncher<Intent>,
+    onNotNeeded: () -> Unit,
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && shouldRequestCallScreeningRole(context)) {
+        val roleManager = context.getSystemService(RoleManager::class.java)
+        SetupPromptRepository.markCallScreeningRoleRequested(context)
+        launcher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
+    } else {
+        onNotNeeded()
+    }
+}
+
+/** True while the one-time "display over other apps" request is still owed: not granted, and
+ * this install has never been asked. */
+internal fun shouldRequestOverlayPermission(context: Context): Boolean =
+    !Settings.canDrawOverlays(context) && !SetupPromptRepository.hasOverlayPermissionBeenRequested(context)
+
+/** Whether Set Default still has an optional follow-up request to make — what sends an
+ * already-default install through this screen once (see CalloraNavHost's startDestinationFor). */
+internal fun hasPendingSetupRequests(context: Context): Boolean =
+    shouldRequestCallScreeningRole(context) || shouldRequestOverlayPermission(context)
+
+/** Opens the system "display over other apps" page for this app if [shouldRequestOverlayPermission],
+ * recording that it was asked; otherwise [onNotNeeded]. It's a Settings page rather than a
+ * dialog, so a toast says why the user just landed there. */
+private fun requestOverlayPermission(
+    context: Context,
+    launcher: ActivityResultLauncher<Intent>,
+    onNotNeeded: () -> Unit,
+) {
+    if (!shouldRequestOverlayPermission(context)) {
+        onNotNeeded()
+        return
+    }
+    SetupPromptRepository.markOverlayPermissionRequested(context)
+    try {
+        launcher.launch(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+        )
+        Toast.makeText(context, R.string.setdefault_overlay_permission_message, Toast.LENGTH_LONG).show()
+    } catch (e: ActivityNotFoundException) {
+        onNotNeeded()
     }
 }

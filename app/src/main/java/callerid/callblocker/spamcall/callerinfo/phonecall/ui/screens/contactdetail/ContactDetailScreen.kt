@@ -109,6 +109,7 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatRelative
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.formatTimeOfDay
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.initialsOf
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.normalizeDialedNumber
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.openWhatsAppChat
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.startExternalActivity
 import coil.compose.AsyncImage
 
@@ -152,7 +153,7 @@ fun ContactDetailScreen(
 
     val onMessage: () -> Unit = { context.startExternalActivity(smsIntent(uiState.phoneNumber)) }
     val onWhatsApp: () -> Unit = {
-        if (!openWhatsAppChat(context, uiState.phoneNumber)) viewModel.onWhatsAppUnavailable()
+        if (!context.openWhatsAppChat(uiState.phoneNumber)) viewModel.onWhatsAppUnavailable()
     }
     // No video-call support exists anywhere in the app (ActiveCallScreen's own Video button just
     // shows an "unsupported" toast) — this used to silently place a normal voice call instead,
@@ -698,28 +699,6 @@ private fun addContactIntent(phoneNumber: String): Intent =
     Intent(Intent.ACTION_INSERT, ContactsContract.Contacts.CONTENT_URI).apply {
         putExtra(ContactsContract.Intents.Insert.PHONE, phoneNumber)
     }
-
-private val WhatsAppPackages = listOf("com.whatsapp", "com.whatsapp.w4b")
-
-/**
- * Opens a WhatsApp chat via wa.me, which wants digits only with the country code — so the number
- * goes through [normalizeDialedNumber] first (bare Indian numbers gain 91). The intent is pinned
- * to the WhatsApp/WhatsApp Business package: unpinned, wa.me would just open in the browser when
- * WhatsApp isn't installed. Returns false when neither app is installed.
- */
-private fun openWhatsAppChat(context: Context, phoneNumber: String): Boolean {
-    val digits = normalizeDialedNumber(phoneNumber).filter { it.isDigit() }
-    val uri = Uri.parse("https://wa.me/$digits")
-    for (packageName in WhatsAppPackages) {
-        try {
-            context.startExternalActivity(Intent(Intent.ACTION_VIEW, uri).setPackage(packageName))
-            return true
-        } catch (e: ActivityNotFoundException) {
-            // Not installed — try the next package.
-        }
-    }
-    return false
-}
 
 /** This device's own local spam mark — deliberately worded as this device's opinion (never
  * "reported by N users" or similar), since no community/shared data exists behind it. */

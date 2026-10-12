@@ -126,6 +126,10 @@
     <string name="call_ended_view_profile">View profile</string>
     <string name="call_ended_no_additional_details">No additional details available</string>
     <string name="call_ended_reported_as_spam">Reported as spam</string>
+    <string name="call_ended_recent_calls_title">Recent calls</string>
+    <string name="call_ended_note_placeholder">Add a note about this call</string>
+    <string name="call_ended_note_save">Save note</string>
+    <string name="call_ended_note_saved">Note saved</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">Marked as spam · %1$s</string>
     <string name="call_ended_toast_number_blocked">Number blocked</string>
@@ -302,6 +306,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">This is what your calls will look like</string>
     <string name="setdefault_card_subtitle">Set Caller ID as your default phone app to identify callers and block spam automatically.</string>
+    <string name="setdefault_required_message">Caller ID must be your default phone app to work.</string>
+    <string name="setdefault_overlay_permission_message">Allow display over other apps so Caller ID can show call details after every call.</string>
+    <string name="autostart_prompt_title">Allow autostart</string>
+    <string name="autostart_prompt_message">Your phone stops apps from running in the background unless autostart is allowed. Turn it on for Caller ID to keep:</string>
+    <string name="autostart_prompt_benefit_caller_id">Caller ID on every incoming call</string>
+    <string name="autostart_prompt_benefit_spam">Spam calls blocked automatically</string>
+    <string name="autostart_prompt_benefit_call_details">Call details right after every call</string>
+    <string name="autostart_prompt_allow">Allow</string>
+    <string name="call_monitor_channel_name">Call details</string>
+    <string name="call_monitor_notification_text">Ready to show call details after every call</string>
     <string name="setdefault_feature_realtime_id">Real-time caller identification</string>
     <string name="setdefault_feature_spam_blocked">Community-reported spam blocked</string>
     <string name="setdefault_feature_keep_contacts">Keeps all your existing contacts</string>

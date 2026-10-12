@@ -114,6 +114,10 @@
     <string name="call_ended_view_profile">Ver perfil</string>
     <string name="call_ended_no_additional_details">No hay más detalles disponibles</string>
     <string name="call_ended_reported_as_spam">Reportado como spam</string>
+    <string name="call_ended_recent_calls_title">Llamadas recientes</string>
+    <string name="call_ended_note_placeholder">Añade una nota sobre esta llamada</string>
+    <string name="call_ended_note_save">Guardar nota</string>
+    <string name="call_ended_note_saved">Nota guardada</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">Marcado como spam · %1$s</string>
     <string name="call_ended_toast_number_blocked">Número bloqueado</string>
@@ -283,6 +287,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Así se verán tus llamadas</string>
     <string name="setdefault_card_subtitle">Configura Caller ID como tu app de teléfono predeterminada para identificar llamadas y bloquear spam automáticamente.</string>
+    <string name="setdefault_required_message">Caller ID debe ser tu app de teléfono predeterminada para funcionar.</string>
+    <string name="setdefault_overlay_permission_message">Permite mostrar sobre otras apps para que Caller ID muestre los detalles después de cada llamada.</string>
+    <string name="autostart_prompt_title">Permitir inicio automático</string>
+    <string name="autostart_prompt_message">Tu teléfono impide que las apps funcionen en segundo plano si no se permite el inicio automático. Actívalo para Caller ID y conserva:</string>
+    <string name="autostart_prompt_benefit_caller_id">Identificación en cada llamada entrante</string>
+    <string name="autostart_prompt_benefit_spam">Bloqueo automático de llamadas de spam</string>
+    <string name="autostart_prompt_benefit_call_details">Detalles justo después de cada llamada</string>
+    <string name="autostart_prompt_allow">Permitir</string>
+    <string name="call_monitor_channel_name">Detalles de llamadas</string>
+    <string name="call_monitor_notification_text">Listo para mostrar los detalles después de cada llamada</string>
     <string name="setdefault_feature_realtime_id">Identificación de llamadas en tiempo real</string>
     <string name="setdefault_feature_spam_blocked">Spam reportado por la comunidad bloqueado</string>
     <string name="setdefault_feature_keep_contacts">Conserva todos tus contactos actuales</string>

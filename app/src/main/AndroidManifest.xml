@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- A phone app is useless without telephony: keeps Play from offering it to such devices
+         (SetDefaultScreen's mandatory default-phone-app gate couldn't be passed there anyway). -->
+    <uses-feature android:name="android.hardware.telephony" android:required="true" />
+
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -16,8 +20,16 @@
     <!-- InCallServiceImpl goes foreground (type phoneCall) while a call is up: Android 12+ only
          accepts a CallStyle notification from a foreground service (or one with a full-screen
          intent). phoneCall is allowed because this app holds MANAGE_OWN_CALLS / the dialer role. -->
+    <!-- "Display over other apps", requested from SetDefaultScreen. Not used to draw an overlay
+         window: holding it is what allows CallMonitorService/PostCallPhoneStateReceiver to open
+         CallEndedActivity from the background when this app is not the default phone app. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <!-- CallMonitorService: watches for calls ending while this app is not the default phone app
+         (see its own doc). RECEIVE_BOOT_COMPLETED restarts it after a reboot. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".CalloraApplication"
@@ -78,8 +90,8 @@
             android:theme="@style/Theme.Callora.IncomingCall" />
 
         <!-- Truecaller-style post-call popup (see CallEndedActivity's own doc). Plain Activity,
-             not a system overlay — no SYSTEM_ALERT_WINDOW permission involved. exported=false:
-             only ever launched internally from InCallServiceImpl. singleTask so a second call
+             not a system overlay window. exported=false: only ever launched internally, from
+             InCallServiceImpl (default phone app) or the PostCallMonitor triggers (not default). singleTask so a second call
              ending in quick succession reuses this instance instead of stacking popups. -->
         <activity
             android:name=".ui.screens.callended.CallEndedActivity"
@@ -87,7 +99,26 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.Callora.CallEnded"
+            android:windowSoftInputMode="adjustResize"
             android:screenOrientation="portrait" />
+
+        <!-- The same screen as started by the system: Telecom sends POST_CALL to the app holding
+             the CALL_SCREENING role after every completed call (API 30+). See PostCallActivity. -->
+        <activity
+            android:name=".ui.screens.callended.PostCallActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Callora.CallEnded"
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.telecom.action.POST_CALL" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".telecom.CalloraCallScreeningService"
@@ -129,6 +160,34 @@
                 <action android:name="android.telecom.action.SHOW_MISSED_CALLS_NOTIFICATION" />
             </intent-filter>
         </receiver>
+
+        <!-- Call-ended screen while NOT the default phone app (see PostCallMonitor). PHONE_STATE
+             is a protected broadcast only the system can send, and one of the few implicit
+             broadcasts a manifest receiver still gets. -->
+        <receiver
+            android:name=".telecom.PostCallPhoneStateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".telecom.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".telecom.CallMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Detects when a phone call ends so the caller details screen can be shown while the app is not the default phone app" />
+        </service>
     </application>
 
 </manifest>

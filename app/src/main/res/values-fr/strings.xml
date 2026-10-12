@@ -114,6 +114,10 @@
     <string name="call_ended_view_profile">Voir le profil</string>
     <string name="call_ended_no_additional_details">Aucun détail supplémentaire disponible</string>
     <string name="call_ended_reported_as_spam">Signalé comme spam</string>
+    <string name="call_ended_recent_calls_title">Appels récents</string>
+    <string name="call_ended_note_placeholder">Ajouter une note sur cet appel</string>
+    <string name="call_ended_note_save">Enregistrer la note</string>
+    <string name="call_ended_note_saved">Note enregistrée</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">Marqué comme spam · %1$s</string>
     <string name="call_ended_toast_number_blocked">Numéro bloqué</string>
@@ -283,6 +287,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Voici à quoi ressembleront vos appels</string>
     <string name="setdefault_card_subtitle">Définissez Caller ID comme application téléphonique par défaut pour identifier les appelants et bloquer le spam automatiquement.</string>
+    <string name="setdefault_required_message">Caller ID doit être votre application téléphonique par défaut pour fonctionner.</string>
+    <string name="setdefault_overlay_permission_message">Autorisez la superposition aux autres applis pour que Caller ID affiche les détails après chaque appel.</string>
+    <string name="autostart_prompt_title">Autoriser le démarrage automatique</string>
+    <string name="autostart_prompt_message">Votre téléphone empêche les applis de fonctionner en arrière-plan si le démarrage automatique n\'est pas autorisé. Activez-le pour Caller ID afin de conserver :</string>
+    <string name="autostart_prompt_benefit_caller_id">L\'identification de chaque appel entrant</string>
+    <string name="autostart_prompt_benefit_spam">Le blocage automatique des appels indésirables</string>
+    <string name="autostart_prompt_benefit_call_details">Les détails juste après chaque appel</string>
+    <string name="autostart_prompt_allow">Autoriser</string>
+    <string name="call_monitor_channel_name">Détails des appels</string>
+    <string name="call_monitor_notification_text">Prêt à afficher les détails après chaque appel</string>
     <string name="setdefault_feature_realtime_id">Identification de l\'appelant en temps réel</string>
     <string name="setdefault_feature_spam_blocked">Spam signalé par la communauté bloqué</string>
     <string name="setdefault_feature_keep_contacts">Conserve tous vos contacts existants</string>

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallMonitorService
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.navigation.CalloraNavHost
@@ -129,6 +130,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         isResumed = true
+        // The dialer role or the after-call setting may have changed since last time.
+        CallMonitorService.sync(this)
     }
 
     override fun onPause() {

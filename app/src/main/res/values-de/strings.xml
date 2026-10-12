@@ -114,6 +114,10 @@
     <string name="call_ended_view_profile">Profil anzeigen</string>
     <string name="call_ended_no_additional_details">Keine weiteren Details verfügbar</string>
     <string name="call_ended_reported_as_spam">Als Spam gemeldet</string>
+    <string name="call_ended_recent_calls_title">Letzte Anrufe</string>
+    <string name="call_ended_note_placeholder">Notiz zu diesem Anruf hinzufügen</string>
+    <string name="call_ended_note_save">Notiz speichern</string>
+    <string name="call_ended_note_saved">Notiz gespeichert</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">Als Spam markiert · %1$s</string>
     <string name="call_ended_toast_number_blocked">Nummer blockiert</string>
@@ -283,6 +287,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">So werden deine Anrufe aussehen</string>
     <string name="setdefault_card_subtitle">Lege Caller ID als Standard-Telefon-App fest, um Anrufer automatisch zu identifizieren und Spam zu blockieren.</string>
+    <string name="setdefault_required_message">Caller ID muss deine Standard-Telefon-App sein, um zu funktionieren.</string>
+    <string name="setdefault_overlay_permission_message">Erlaube die Einblendung über anderen Apps, damit Caller ID nach jedem Anruf Details anzeigen kann.</string>
+    <string name="autostart_prompt_title">Autostart erlauben</string>
+    <string name="autostart_prompt_message">Dein Telefon verhindert, dass Apps im Hintergrund laufen, sofern Autostart nicht erlaubt ist. Aktiviere es für Caller ID, damit Folgendes weiter funktioniert:</string>
+    <string name="autostart_prompt_benefit_caller_id">Anrufererkennung bei jedem eingehenden Anruf</string>
+    <string name="autostart_prompt_benefit_spam">Automatisches Blockieren von Spam-Anrufen</string>
+    <string name="autostart_prompt_benefit_call_details">Anrufdetails direkt nach jedem Anruf</string>
+    <string name="autostart_prompt_allow">Erlauben</string>
+    <string name="call_monitor_channel_name">Anrufdetails</string>
+    <string name="call_monitor_notification_text">Bereit, nach jedem Anruf Details anzuzeigen</string>
     <string name="setdefault_feature_realtime_id">Anrufer-Identifikation in Echtzeit</string>
     <string name="setdefault_feature_spam_blocked">Von der Community gemeldeter Spam blockiert</string>
     <string name="setdefault_feature_keep_contacts">Behält alle deine bestehenden Kontakte</string>

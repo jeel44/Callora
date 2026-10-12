@@ -114,6 +114,10 @@
     <string name="call_ended_view_profile">Vis profil</string>
     <string name="call_ended_no_additional_details">Ingen flere detaljer tilgjengelig</string>
     <string name="call_ended_reported_as_spam">Rapportert som spam</string>
+    <string name="call_ended_recent_calls_title">Siste samtaler</string>
+    <string name="call_ended_note_placeholder">Legg til et notat om denne samtalen</string>
+    <string name="call_ended_note_save">Lagre notat</string>
+    <string name="call_ended_note_saved">Notat lagret</string>
     <string name="call_ended_status_line">%1$s · %2$s</string>
     <string name="call_ended_marked_as_spam_subtext">Merket som spam · %1$s</string>
     <string name="call_ended_toast_number_blocked">Nummer blokkert</string>
@@ -283,6 +287,16 @@
     <!-- Set default dialer screen -->
     <string name="setdefault_card_title">Slik vil anropene dine se ut</string>
     <string name="setdefault_card_subtitle">Angi Caller ID som standard telefonapp for å identifisere innringere og blokkere spam automatisk.</string>
+    <string name="setdefault_required_message">Caller ID må være standard telefonapp for å fungere.</string>
+    <string name="setdefault_overlay_permission_message">Tillat visning over andre apper slik at Caller ID kan vise detaljer etter hver samtale.</string>
+    <string name="autostart_prompt_title">Tillat autostart</string>
+    <string name="autostart_prompt_message">Telefonen din hindrer apper i å kjøre i bakgrunnen med mindre autostart er tillatt. Slå det på for Caller ID for å beholde:</string>
+    <string name="autostart_prompt_benefit_caller_id">Nummervisning på alle innkommende anrop</string>
+    <string name="autostart_prompt_benefit_spam">Automatisk blokkering av spamanrop</string>
+    <string name="autostart_prompt_benefit_call_details">Samtaledetaljer rett etter hver samtale</string>
+    <string name="autostart_prompt_allow">Tillat</string>
+    <string name="call_monitor_channel_name">Samtaledetaljer</string>
+    <string name="call_monitor_notification_text">Klar til å vise detaljer etter hver samtale</string>
     <string name="setdefault_feature_realtime_id">Sanntids anrops-identifikasjon</string>
     <string name="setdefault_feature_spam_blocked">Spam rapportert av fellesskapet blokkert</string>
     <string name="setdefault_feature_keep_contacts">Beholder alle dine eksisterende kontakter</string>
