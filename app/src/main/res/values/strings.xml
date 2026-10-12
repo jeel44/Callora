@@ -239,7 +239,7 @@
     <string name="spam_center_stat_blocked_week">Blocked this week</string>
     <string name="spam_center_stat_blocked_alltime">Blocked all-time</string>
     <string name="spam_center_rule_auto_block_title">Auto-block top spammers</string>
-    <string name="spam_center_rule_auto_block_subtitle">Community-reported numbers</string>
+    <string name="spam_center_rule_auto_block_subtitle">Numbers you marked as spam</string>
     <string name="spam_center_rule_telemarketers_title">Block telemarketers</string>
     <string name="spam_center_rule_telemarketers_subtitle">Sales &amp; promotional calls</string>
     <string name="spam_center_rule_international_title">Block international spam</string>

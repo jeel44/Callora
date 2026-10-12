@@ -6,9 +6,12 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
+import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallSummary
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.EndedCallDetails
@@ -18,32 +21,25 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.ThemeState
 import com.google.firebase.analytics.FirebaseAnalytics
 
 /**
- * Truecaller-style "call ended" popup. Launched from
- * [callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository.onCallEnded] (wired
- * up in InCallServiceImpl.onCreate), which fires for every ended call regardless of whether it
- * was ever answered — unlike the existing AfterCallScreen, which only shows for a call that
- * reached Active via a Compose nav LaunchedEffect.
+ * The "call ended" screen: a regular full-screen Activity of its own (no fragment, no dialog, no
+ * overlay window), shown after every ended call whether or not it was answered. Launched by
+ * InCallServiceImpl while this app is the default phone app, and by the PostCallMonitor triggers
+ * / [PostCallActivity] while it isn't.
  *
- * A plain Activity, not a system overlay: no SYSTEM_ALERT_WINDOW, no WindowManager overlay
- * window. It reuses the exact same setShowWhenLocked/setTurnScreenOn treatment MainActivity
- * already applies for a real incoming call (see MainActivity.applyIncomingCallWindowFlags), so it
- * pops up over the lock screen or whatever app is currently foregrounded without any new
- * permission. Theme.Callora.CallEnded (see themes.xml) makes the window itself translucent so
- * whatever was behind it stays visible, dimmed, under the card — [CallEndedRoute] draws that dim
- * scrim itself in Compose.
+ * It reuses the same setShowWhenLocked/setTurnScreenOn treatment MainActivity applies for a real
+ * incoming call (see MainActivity.applyIncomingCallWindowFlags), so it also appears over the
+ * lock screen.
  */
 open class CallEndedActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Same reason as MainActivity: the window background the system paints before Compose's
+        // first frame must already match the saved theme.
+        if (ThemeState.isDarkMode) setTheme(R.style.Theme_Callora_Dark)
         super.onCreate(savedInstanceState)
-        // Without this, decorFitsSystemWindows stays true (the default) and this Activity's own
-        // content — including CallEndedRoute's full-screen dim scrim — is laid out only within
-        // the system-bar-inset area. The status/nav bar strips outside that area are then a
-        // separate, system-composited region that, for this *translucent* window, shows whatever
-        // the previous Activity rendered there completely undimmed — the bleed-through bug this
-        // fixes. Mirrors MainActivity's own enableEdgeToEdge() call so this window's Compose
-        // content actually spans the full physical display, same as everywhere else in the app.
-        enableEdgeToEdge()
+        // Edge to edge, like MainActivity: the header's colour runs up behind the status bar.
+        // Light status-bar icons either way, since that header is a saturated blue/red band.
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)

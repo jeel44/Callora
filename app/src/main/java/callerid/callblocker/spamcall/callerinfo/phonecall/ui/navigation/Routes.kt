@@ -23,7 +23,12 @@ object Routes {
     const val NOTIFICATION_SETTINGS = "notification_settings"
     const val SEARCH = "search"
     const val ALL_CONTACTS = "all_contacts"
-    const val DIALPAD = "dialpad"
+    // number is optional: set when the dialpad is opened by a tel:/ACTION_DIAL intent (see
+    // MainActivity.routeForIntent), which must prefill the number, never place the call.
+    const val DIALPAD = "dialpad?number={number}"
+
+    fun dialpadRoute(number: String? = null): String =
+        if (number.isNullOrEmpty()) "dialpad" else "dialpad?number=${Uri.encode(number)}"
     const val SPAM_CENTER = "spam_center"
     const val BLOCKED_LIST = "blocked_list"
     const val SETTINGS = "settings"

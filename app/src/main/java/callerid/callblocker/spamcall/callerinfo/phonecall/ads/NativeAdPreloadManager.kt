@@ -3,6 +3,7 @@ package callerid.callblocker.spamcall.callerinfo.phonecall.ads
 import android.app.Application
 import android.os.SystemClock
 import android.util.Log
+import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.CallEndAdFormat
 import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.RemoteConfigManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
@@ -25,7 +26,8 @@ private const val AD_EXPIRY_MILLIS = 60 * 60 * 1000L
  *    DISCONNECTED — DISCONNECTED lingers until the next reset(), so a back-to-back call goes
  *    straight DISCONNECTED -> RINGING/DIALING and still counts) into DIALING or RINGING.
  *  - Gated by Remote Config's `ad_callend_native_enabled` via [awaitAdPlacementEnabled], same as
- *    the popup's own live request.
+ *    the popup's own live request — and only while `ad_callend_format` is "native" (the banner
+ *    format is CallEndBannerAdManager's job; [preloadCallEndAd] calls both).
  *  - Holds at most ONE ad, for at most [AD_EXPIRY_MILLIS]. A fresh held ad (or a request already
  *    in flight) makes a new trigger a no-op; a stale one is destroyed and replaced.
  *  - An in-flight request is never cancelled: if the call ends before it lands, the ad is still
@@ -50,6 +52,8 @@ object NativeAdPreloadManager {
     /** Called once from CalloraApplication.onCreate() (main thread). */
     fun initialize(app: Application) {
         application = app
+        // Like the banner: also at process start, so even a call that ends at once has one.
+        preload(reason = "process start")
         scope.launch {
             var wasIdle = true
             CallRepository.callState.collect { info ->
@@ -63,12 +67,14 @@ object NativeAdPreloadManager {
     /** Starts loading the next ad unless a fresh one is already held or a request is in flight.
      * Fire-and-forget; safe to call any time after [initialize]. */
     fun preload(reason: String = "manual") {
-        if (isLoadingAd || isAdAvailable()) return
+        if (!::application.isInitialized || isLoadingAd || isAdAvailable()) return
         dropHeldAd()
         isLoadingAd = true
         scope.launch {
-            if (!awaitAdPlacementEnabled { RemoteConfigManager.isCallEndNativeAdEnabled }) {
-                Log.d(TAG, "Preload skipped ($reason): ad_callend_native_enabled is off")
+            if (!awaitAdPlacementEnabled { RemoteConfigManager.isCallEndNativeAdEnabled } ||
+                RemoteConfigManager.callEndAdFormat != CallEndAdFormat.NATIVE
+            ) {
+                Log.d(TAG, "Preload skipped ($reason): call-end placement is off or set to banner")
                 isLoadingAd = false
                 return@launch
             }
@@ -96,7 +102,9 @@ object NativeAdPreloadManager {
     /** The held ad if it's fresh and the placement is still on — removed from the holder, so the
      * caller now owns it and must destroy() it. Null otherwise (a stale one is destroyed here). */
     fun consumePreloadedAd(): NativeAd? {
-        if (!isAdAvailable() || !RemoteConfigManager.isCallEndNativeAdEnabled) {
+        if (!isAdAvailable() || !RemoteConfigManager.isCallEndNativeAdEnabled ||
+            RemoteConfigManager.callEndAdFormat != CallEndAdFormat.NATIVE
+        ) {
             dropHeldAd()
             return null
         }

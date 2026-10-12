@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.AddIcCall
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,16 +38,16 @@ import androidx.compose.ui.unit.dp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.extendedColors
 
-/** Active Call's "More" sheet — Add call / Video call / Hold. Only UI: [ActiveCallScreen] decides
+/** Active Call's "More" sheet — Add call / Hold ([showHold]: only when the call supports it). Only UI: [ActiveCallScreen] decides
  * what each row does (Add call reuses the existing [AddCallOptionsSheet] flow). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CallMoreSheet(
     onDismissRequest: () -> Unit,
     onAddCall: () -> Unit,
-    onVideoCall: () -> Unit,
     onHold: () -> Unit,
     isOnHold: Boolean = false,
+    showHold: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     ModalBottomSheet(
@@ -95,20 +94,16 @@ fun CallMoreSheet(
                 label = stringResource(R.string.active_call_add_call_label),
                 onClick = onAddCall,
             )
-            MoreSheetDivider()
-            MoreSheetRow(
-                icon = Icons.Filled.Videocam,
-                label = stringResource(R.string.active_call_video_call_label),
-                onClick = onVideoCall,
-            )
-            MoreSheetDivider()
-            MoreSheetRow(
-                icon = if (isOnHold) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                label = stringResource(
-                    if (isOnHold) R.string.active_call_resume_label else R.string.active_call_hold_label,
-                ),
-                onClick = onHold,
-            )
+            if (showHold) {
+                MoreSheetDivider()
+                MoreSheetRow(
+                    icon = if (isOnHold) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    label = stringResource(
+                        if (isOnHold) R.string.active_call_resume_label else R.string.active_call_hold_label,
+                    ),
+                    onClick = onHold,
+                )
+            }
         }
     }
 }

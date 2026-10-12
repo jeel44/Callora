@@ -70,6 +70,8 @@ import androidx.compose.ui.unit.sp
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.SetupPromptRepository
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.AutostartPromptDialog
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.deviceNeedsAutostartPermission
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraAccent
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.CalloraPrimary
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.theme.DarkOnSurfaceSoft
@@ -120,24 +122,33 @@ private val ContentCardTopCorner = RoundedCornerShape(topStart = 28.dp, topEnd =
  *  3. "Display over other apps" — requested once, right after step 2. It is what lets
  *     PostCallPhoneStateReceiver open the call-ended screen from the background when this app is
  *     no longer the default phone app. Optional as well.
+ *  4. Autostart — only on the OEM skins that have such a setting (see AutostartSettings.kt):
+ *     once every permission above has been dealt with, a dialog explains what it's for and
+ *     opens the OEM's own screen. Shown once; optional.
  */
 @Composable
 fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val dialerRequiredMessage = stringResource(R.string.setdefault_required_message)
 
-    // Steps 2 and 3's results are never gated on: granted or declined, the app is usable.
+    // Step 4, last: everything else has been asked by now.
+    var showAutostartPrompt by remember { mutableStateOf(false) }
+    val continueAfterOverlayPermission = {
+        if (shouldShowAutostartPrompt(context)) showAutostartPrompt = true else onContinue()
+    }
+
+    // Steps 2 to 4's results are never gated on: granted or declined, the app is usable.
     val overlayPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) {
         if (Settings.canDrawOverlays(context)) {
             AnalyticsHelper.logEvent("set_overlay_permission")
         }
-        onContinue()
+        continueAfterOverlayPermission()
     }
 
     val continueAfterCallScreeningRole = {
-        requestOverlayPermission(context, overlayPermissionLauncher, onNotNeeded = onContinue)
+        requestOverlayPermission(context, overlayPermissionLauncher, onNotNeeded = continueAfterOverlayPermission)
     }
 
     val callScreeningRequestLauncher = rememberLauncherForActivityResult(
@@ -231,6 +242,15 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
     ) { launchDialerRoleRequest() }
 
     if (dialerRoleHeldOnEntry && !followUpPendingOnEntry) return
+
+    if (showAutostartPrompt) {
+        AutostartPromptDialog(
+            onDone = {
+                showAutostartPrompt = false
+                onContinue()
+            },
+        )
+    }
 
     // No BackHandler on purpose: as the start destination, Back exits the app (the role is
     // required to get any further); reached from Blocked List, Back just returns there.
@@ -604,7 +624,13 @@ internal fun shouldRequestOverlayPermission(context: Context): Boolean =
 /** Whether Set Default still has an optional follow-up request to make — what sends an
  * already-default install through this screen once (see CalloraNavHost's startDestinationFor). */
 internal fun hasPendingSetupRequests(context: Context): Boolean =
-    shouldRequestCallScreeningRole(context) || shouldRequestOverlayPermission(context)
+    shouldRequestCallScreeningRole(context) || shouldRequestOverlayPermission(context) ||
+        shouldShowAutostartPrompt(context)
+
+/** True while the one-time autostart dialog is still owed: this phone's maker gates background
+ * starts behind such a setting, and this install has never been asked. */
+internal fun shouldShowAutostartPrompt(context: Context): Boolean =
+    deviceNeedsAutostartPermission() && !SetupPromptRepository.hasAutostartPromptBeenShown(context)
 
 /** Opens the system "display over other apps" page for this app if [shouldRequestOverlayPermission],
  * recording that it was asked; otherwise [onNotNeeded]. It's a Settings page rather than a

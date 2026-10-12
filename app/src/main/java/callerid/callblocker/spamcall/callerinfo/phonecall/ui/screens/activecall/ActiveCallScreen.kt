@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -150,12 +149,6 @@ fun ActiveCallScreen(
     }
 
     val displayName = callInfo.displayName
-    val videoCallLabel = stringResource(R.string.active_call_video_call_label)
-    val videoUnsupportedText = stringResource(R.string.call_feature_unsupported_toast, videoCallLabel)
-    // No video-upgrade exists anywhere in this app (CallRepository only exposes mute/speaker/
-    // DTMF/disconnect/hold) — surfaces an honest toast rather than inventing video-call logic.
-    // Hold is real now (see CallRepository.hold()/unhold(), wired below) - no longer a stub.
-    fun showVideoUnsupportedToast() = Toast.makeText(context, videoUnsupportedText, Toast.LENGTH_SHORT).show()
     val headerInteractionSource = remember { MutableInteractionSource() }
 
     CallScreenBackground(isSpam = false, modifier = modifier) {
@@ -191,21 +184,6 @@ fun ActiveCallScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f))
-                        .clickable(role = Role.Button, onClickLabel = videoCallLabel) { showVideoUnsupportedToast() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Videocam,
-                        contentDescription = videoCallLabel,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -307,20 +285,12 @@ fun ActiveCallScreen(
                 showMoreSheet = false
                 showAddCallOptions = true
             },
-            onVideoCall = {
-                showMoreSheet = false
-                showVideoUnsupportedToast()
-            },
             onHold = {
                 showMoreSheet = false
-                // Previously a toast-only stub (build-2 QA #10: "Hold does not change the call
-                // state"); now real Call.hold()/unhold(). If the carrier/call genuinely doesn't
-                // support it, Telecom just never transitions to STATE_HOLDING and isOnHold stays
-                // false - no separate "unsupported" messaging needed, same as a plain button
-                // press that doesn't do anything would read on a real phone app.
                 viewModel.toggleHold(callInfo.isOnHold)
             },
             isOnHold = callInfo.isOnHold,
+            showHold = callInfo.canHold,
         )
     }
 

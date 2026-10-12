@@ -226,7 +226,7 @@
     <string name="spam_center_stat_blocked_week">Blokkert denne uken</string>
     <string name="spam_center_stat_blocked_alltime">Blokkert totalt</string>
     <string name="spam_center_rule_auto_block_title">Blokker de mest rapporterte spammerne automatisk</string>
-    <string name="spam_center_rule_auto_block_subtitle">Numre rapportert av fellesskapet</string>
+    <string name="spam_center_rule_auto_block_subtitle">Numre du har merket som spam</string>
     <string name="spam_center_rule_telemarketers_title">Blokker telemarketing</string>
     <string name="spam_center_rule_telemarketers_subtitle">Salgs- og reklameanrop</string>
     <string name="spam_center_rule_international_title">Blokker internasjonal spam</string>

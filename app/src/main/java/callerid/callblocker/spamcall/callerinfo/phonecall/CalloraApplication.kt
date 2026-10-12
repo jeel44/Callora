@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AppOpenAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.MobileAdsInitializer
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.CallEndBannerAdManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.NativeAdPreloadManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.LanguagePreferencesRepository
@@ -74,7 +75,10 @@ class CalloraApplication : Application() {
         StartupTimer.section("RemoteConfigManager.initialize") { RemoteConfigManager.initialize() }
         StartupTimer.section("MobileAdsInitializer.initialize") { MobileAdsInitializer.initialize(this, applicationScope) }
         StartupTimer.section("AppOpenAdManager.initialize") { AppOpenAdManager.initialize(this) }
-        // Call-end native ad preload: idle until a call starts, gated by ad_callend_native_enabled.
+        // Call-end ad preload: starts right away and again whenever a call starts, gated by
+        // ad_callend_native_enabled. Only the manager for the format Remote Config selects
+        // (ad_callend_format: banner or native) actually requests anything.
+        StartupTimer.section("CallEndBannerAdManager.initialize") { CallEndBannerAdManager.initialize(this) }
         StartupTimer.section("NativeAdPreloadManager.initialize") { NativeAdPreloadManager.initialize(this) }
         StartupTimer.mark("Application.onCreate end")
     }

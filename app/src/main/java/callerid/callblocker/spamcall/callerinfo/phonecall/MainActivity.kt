@@ -184,6 +184,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun suppressAppOpenAdForCallIntent(intent: Intent) {
         val isCallRelated = intent.action == Intent.ACTION_DIAL ||
+            intent.data?.scheme == "tel" ||
             intent.getBooleanExtra(EXTRA_INCOMING_CALL, false) ||
             intent.getBooleanExtra(EXTRA_OPEN_ACTIVE_CALL, false) ||
             intent.hasExtra(EXTRA_PLACE_CALL_PHONE_NUMBER) ||
@@ -258,19 +259,29 @@ class MainActivity : AppCompatActivity() {
      *    notification now also shows during an outgoing call's Dialing/Ringing phase — tapping it
      *    then must land on OutgoingDialingScreen, not a blank/wrong Active Call screen with no
      *    active call to show. */
-    /** The number to place a call to, from either this app's own [EXTRA_PLACE_CALL_PHONE_NUMBER]
-     * (CallEndedActivity's "Call" action) or a system `tel:`/`android.intent.action.DIAL` deep
-     * link (another app's "Call" button, a phone number link in a message, etc. — Callora is a
-     * default-dialer candidate and declares a `tel:` intent-filter in the manifest, so these
-     * must actually be handled, not silently dropped on Home). Goes through the same
-     * attemptPlaceCall gate as every other call-placing entry point (see [placeCallIntent]'s own
-     * doc), so a deep-link call still gets the CALL_PHONE prompt / already-on-a-call snackbar. */
-    private fun phoneNumberFromIntent(intent: Intent): String? {
-        intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)?.let { return it }
-        if (intent.data?.scheme == "tel") {
-            return intent.data?.schemeSpecificPart
-        }
-        return null
+    /** The number to place a call to — only ever this app's own [EXTRA_PLACE_CALL_PHONE_NUMBER]
+     * (CallEndedActivity's "Call" action). Goes through the same attemptPlaceCall gate as every
+     * other call-placing entry point (see [placeCallIntent]'s own doc). A system `tel:` /
+     * ACTION_DIAL intent is deliberately NOT one of these: see [dialNumberFromIntent]. */
+    private fun phoneNumberFromIntent(intent: Intent): String? =
+        intent.getStringExtra(EXTRA_PLACE_CALL_PHONE_NUMBER)
+
+    /**
+     * The number a `tel:` link / ACTION_DIAL intent carries (another app's "Call" button, a phone
+     * number in a web page or message): "" for a bare ACTION_DIAL, null when this isn't a dial
+     * intent at all. ACTION_DIAL's contract is "show the dialer with this number filled in" —
+     * the user confirms by pressing Call. It must never place the call itself: any app or web
+     * page can fire one without holding CALL_PHONE.
+     */
+    private fun dialNumberFromIntent(intent: Intent): String? {
+        val isTelLink = intent.data?.scheme == "tel"
+        if (intent.action != Intent.ACTION_DIAL && !isTelLink) return null
+        if (!isTelLink) return ""
+        // Dialable characters only — the rest of a tel: URI (";ext=", "?...") isn't a number.
+        return intent.data?.schemeSpecificPart.orEmpty()
+            .substringBefore(';')
+            .substringBefore('?')
+            .filter { it.isDigit() || it in "+*#" }
     }
 
     private fun routeForIntent(intent: Intent): String? {
@@ -280,6 +291,7 @@ class MainActivity : AppCompatActivity() {
         intent.getStringExtra(EXTRA_OPEN_CONTACT_DETAIL)?.let { phoneNumber ->
             return Routes.contactDetailRoute(phoneNumber)
         }
+        dialNumberFromIntent(intent)?.let { number -> return Routes.dialpadRoute(number) }
         if (!intent.getBooleanExtra(EXTRA_OPEN_ACTIVE_CALL, false)) return null
         val info = CallRepository.callState.value
         return when (info.state) {

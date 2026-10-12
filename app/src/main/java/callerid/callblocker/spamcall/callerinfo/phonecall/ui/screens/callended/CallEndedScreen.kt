@@ -9,9 +9,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,21 +21,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallMade
+import androidx.compose.material.icons.automirrored.filled.CallMissed
+import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
@@ -48,11 +54,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,15 +68,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
@@ -84,6 +97,8 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.CallType
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.Contact
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamCategory
 import callerid.callblocker.spamcall.callerinfo.phonecall.domain.model.SpamMark
+import callerid.callblocker.spamcall.callerinfo.phonecall.remoteconfig.CallEndAdFormat
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallEndBannerAdSlot
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.NativeAdSlot
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SpamCategoryPickerSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.call.formatCallTimer
@@ -103,19 +118,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val CardShape = RoundedCornerShape(18.dp)
-private val HeaderTopShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
 private val SpamGradientStart = CalloraSpam
 private val SpamGradientEnd = Color(0xFFC62828)
 private val NormalGradientStart = CalloraPrimary
 private val NormalGradientEnd = CalloraAccent
 
-// "View profile" button — a solid shade darker than each variant's own header gradient. No
-// existing token in Color.kt goes this dark (CalloraSpam/SetDefaultSpamAvatar* are all lighter
-// reds meant for avatars/mock previews, not a pressed-looking solid button), so these are new,
-// scoped to this screen only — same convention as CallScreenComponents' own local gradient stops.
-private val SpamButtonColor = Color(0xFFB71C1C)
-private val NormalButtonColor = Color(0xFF0D47A1)
+// Layout tokens — one margin, one section radius, one action size, used everywhere on this
+// screen so its parts line up on the same edges.
+private val ScreenMargin = 20.dp
+private val SectionShape = RoundedCornerShape(18.dp)
+private val HeroShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
+private val ActionButtonSize = 52.dp
+private val ActionButtonShape = RoundedCornerShape(18.dp)
+
+// The most the native-format ad may take of the screen; the card fits itself into what's left.
+private val NativeAdMaxHeight = 330.dp
 
 // How many of this number's latest calls the card lists under "Recent calls".
 private const val RECENT_CALLS_SHOWN = 3
@@ -165,6 +182,7 @@ fun CallEndedRoute(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val bannerState by adsViewModel.bannerState.collectAsState()
 
     var data by remember { mutableStateOf<CallEndedRealData?>(null) }
     var isBlocked by remember { mutableStateOf(false) }
@@ -224,34 +242,35 @@ fun CallEndedRoute(
     LaunchedEffect(dismissRequested) {
         if (dismissRequested) {
             // Matches the AnimatedVisibility exit spec below — gives the fade/scale-out time to
-            // actually play before the Activity behind it is torn down.
-            delay(200)
+            // actually play before the Activity is finished.
+            delay(150)
             onDismiss()
         }
     }
 
+    // A full screen of its own, not a card floating over a dimmed backdrop: the opaque surface
+    // fills the window, the header runs up behind the status bar, the ad sits at the bottom.
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f)),
-        contentAlignment = Alignment.Center,
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn(tween(200)) + scaleIn(tween(200), initialScale = 0.92f),
-            exit = fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.92f),
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
         ) {
-            // Card + native ad, centered together. The ad is drawn inside the card's own
+            // Content + ad. The ad is drawn inside the content's own
             // AnimatedVisibility so it appears/leaves with the card — but [visible] and the dismiss
-            // timing above never look at the ad: it preloads in CallEndedAdsViewModel meanwhile and
-            // simply shows up here whenever it's ready.
+            // timing above never look at the ad: it is normally preloaded (CallEndBannerAdManager)
+            // and otherwise simply shows up here whenever it's ready.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .systemBarsPadding()
+                    // Not the status bar: HeaderBand pads itself so its colour fills that strip.
+                    .navigationBarsPadding()
                     // The note field: keeps it above the keyboard.
                     .imePadding(),
-                verticalArrangement = Arrangement.Center,
             ) {
                 CallEndedCard(
                     phoneNumber = phoneNumber,
@@ -320,17 +339,26 @@ fun CallEndedRoute(
                         }
                     },
                     onReportSpam = { showSpamCategoryPicker = true },
+                    modifier = Modifier.weight(1f),
                 )
-                // Below the card, never inside it: the card is measured first at its full natural
-                // height, and the ad only gets what's left (weight without fill). Its media shrinks to
-                // fit, and if even AdMob's minimum doesn't fit (e.g. View profile expanded on a short
-                // screen) NativeAdSlot renders nothing — it can't push the actions or header off-screen.
-                NativeAdSlot(
-                    controller = adsViewModel.nativeAdController,
-                    modifier = Modifier
-                        .weight(1f, fill = false)
-                        .padding(bottom = 24.dp),
-                )
+                // Below the card, never inside it, and measured BEFORE it: the ad takes its own
+                // height and the card (weight; see FitColumn) takes what's left — so on a
+                // short screen, or with the keyboard up, it is the card that gives way, never the
+                // ad. Which ad is Remote Config's choice: the banner has a fixed height; the
+                // native ad fits itself into at most NativeAdMaxHeight (its media shrinks, see
+                // NativeAdSlot) and takes no space at all until it has something to show.
+                when (adsViewModel.format) {
+                    CallEndAdFormat.BANNER -> CallEndBannerAdSlot(
+                        state = bannerState,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    CallEndAdFormat.NATIVE -> NativeAdSlot(
+                        controller = adsViewModel.nativeAdController,
+                        modifier = Modifier
+                            .heightIn(max = NativeAdMaxHeight)
+                            .padding(bottom = 12.dp),
+                    )
+                }
             }
         }
 
@@ -388,18 +416,19 @@ private fun CallEndedCard(
         }
     }
 
-    Column(
+    // Nothing on this screen scrolls. The content is given whatever height is left above the ad
+    // and FitColumn lays out as many sections as fit in it at their full size, leaving out the
+    // least important ones (see DropOrder) rather than squeezing or clipping any of them.
+    //
+    // Reading order, top to bottom: who it was and how the call went (hero) -> what to do about
+    // it (one filled primary action, the rest tonal) -> context (recent calls) -> the user's own
+    // input (note, spam verdict). One accent colour per screen: blue, or red for a spam number.
+    FitColumn(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp)
-            .shadow(elevation = 16.dp, shape = CardShape)
-            .clip(CardShape)
-            .background(MaterialTheme.colorScheme.surface)
-            // Recent calls + the note field can make the card taller than a short screen (or
-            // what's left above the keyboard) — it scrolls rather than pushing parts off-screen.
-            .verticalScroll(rememberScrollState()),
+            .background(MaterialTheme.colorScheme.surface),
     ) {
-        HeaderBand(
+        HeroBand(
             isSpam = isSpam,
             isIncoming = isIncoming,
             durationSeconds = durationSeconds,
@@ -408,257 +437,329 @@ private fun CallEndedCard(
             contact = contact,
             spamMark = spamMark,
             phoneNumber = phoneNumber,
+            profileExpanded = expanded,
+            onToggleProfile = { expanded = !expanded },
             onDismiss = onDismiss,
         )
 
-        ViewProfileButton(
-            isSpam = isSpam,
-            onToggle = { expanded = !expanded },
-        )
-
         if (expanded) {
-            ProfileDetailsPanel(
-                isSpam = isSpam,
-                contact = contact,
-                spamMark = spamMark,
-                callCount = callCount,
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
-        ) {
-            Text(
-                text = formatPhoneNumberForDisplay(phoneNumber),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Box(modifier = Modifier.layoutId(DropOrder.PROFILE)) {
+                ProfileDetailsPanel(
+                    isSpam = isSpam,
+                    contact = contact,
+                    spamMark = spamMark,
+                    callCount = callCount,
+                )
+            }
         }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 12.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+                .padding(horizontal = ScreenMargin)
+                .padding(top = 16.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            val accent = if (isSpam) MaterialTheme.extendedColors.spam else MaterialTheme.colorScheme.primary
+            // The one filled button: calling back is what this screen is most often opened for.
             ActionButton(
                 icon = Icons.Filled.Call,
                 label = stringResource(R.string.call_ended_action_call),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = accent,
+                filled = true,
                 onClick = onCall,
             )
             ActionButton(
                 icon = Icons.AutoMirrored.Filled.Message,
                 label = stringResource(R.string.call_ended_action_message),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = accent,
                 onClick = onMessage,
             )
             WhatsAppActionButton(onClick = onWhatsApp)
-            if (isSpam) {
-                ActionButton(
-                    icon = Icons.Filled.Bookmark,
-                    label = stringResource(R.string.call_ended_action_save),
-                    tint = MaterialTheme.colorScheme.primary,
-                    onClick = onSave,
-                )
-            } else if (contact != null) {
+            if (!isSpam && contact != null) {
                 ActionButton(
                     icon = Icons.Filled.Person,
                     label = stringResource(R.string.call_ended_action_contact),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = accent,
                     onClick = onOpenContact,
                 )
             } else {
                 ActionButton(
                     icon = Icons.Filled.Bookmark,
                     label = stringResource(R.string.call_ended_action_save),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = accent,
                     onClick = onSave,
                 )
             }
             ActionButton(
                 icon = Icons.Filled.Block,
                 label = if (isBlocked) stringResource(R.string.call_ended_action_unblock) else stringResource(R.string.call_ended_action_block),
-                tint = if (isBlocked) MaterialTheme.colorScheme.primary else MaterialTheme.extendedColors.spam,
+                tint = if (isBlocked) accent else MaterialTheme.extendedColors.spam,
                 onClick = onToggleBlock,
             )
         }
 
-        if (recentCalls.isNotEmpty()) {
-            RecentCallsSection(recentCalls)
+        // Each recent call is its own FitColumn child, so on a shorter screen the list loses
+        // its oldest rows one at a time instead of disappearing whole.
+        recentCalls.forEachIndexed { index, call ->
+            Column(
+                modifier = Modifier
+                    .layoutId(if (index == 0) DropOrder.RECENT_CALLS_FIRST else DropOrder.RECENT_CALLS_OLDER + index)
+                    .fillMaxWidth()
+                    .padding(horizontal = ScreenMargin),
+            ) {
+                if (index == 0) {
+                    SectionLabel(text = stringResource(R.string.call_ended_recent_calls_title))
+                }
+                RecentCallRow(call)
+            }
         }
 
-        CallNoteSection(savedNote = savedNote, onSaveNote = onSaveNote)
+        Box(modifier = Modifier.layoutId(DropOrder.NOTE)) {
+            CallNoteSection(savedNote = savedNote, onSaveNote = onSaveNote)
+        }
 
         if (!isSpam) {
-            SpamReportSection(reported = spamReported, onReportSpam = onReportSpam, onDismiss = onDismiss)
+            Box(modifier = Modifier.layoutId(DropOrder.SPAM_QUESTION)) {
+                SpamReportSection(reported = spamReported, onReportSpam = onReportSpam, onDismiss = onDismiss)
+            }
         }
     }
 }
 
-/** This number's latest calls (the one that just ended first), so the card answers "when did we
- * last speak / how often do they call" without opening Contact Detail. */
+/**
+ * Which of the card's sections give way first when the screen is too short for all of them
+ * (higher goes first; REQUIRED never does): the older recent calls, then the spam question, the
+ * recent-calls list altogether, View profile, and last the note. The header and the action row
+ * always stay.
+ */
+private object DropOrder {
+    const val REQUIRED = 0
+    const val NOTE = 1
+    const val PROFILE = 2
+    const val RECENT_CALLS_FIRST = 3
+    const val SPAM_QUESTION = 4
+    // + the row's index, so the oldest row has the highest value and goes first.
+    const val RECENT_CALLS_OLDER = 5
+}
+
+/**
+ * A Column that never scrolls, squeezes or clips: every child is measured at its natural height,
+ * and when they don't all fit in the height available, whole children are left out — highest
+ * [DropOrder] (set with Modifier.layoutId) first — until the rest do. Children without a
+ * layoutId are REQUIRED.
+ */
 @Composable
-private fun RecentCallsSection(recentCalls: List<CallHistoryEntry>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 12.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.call_ended_recent_calls_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        recentCalls.forEach { call ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = when (call.callType) {
-                        CallType.INCOMING -> stringResource(R.string.contact_detail_call_type_incoming)
-                        CallType.OUTGOING -> stringResource(R.string.contact_detail_call_type_outgoing)
-                        CallType.MISSED -> stringResource(R.string.call_status_missed)
-                        CallType.OTHER -> stringResource(R.string.contact_detail_call_type_other)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (call.callType == CallType.MISSED) {
-                        MaterialTheme.extendedColors.spam
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = if (call.durationSeconds > 0L) {
-                        stringResource(
-                            R.string.call_ended_status_line,
-                            formatRelativeShort(call.timestamp),
-                            formatCallTimer(call.durationSeconds.toInt()),
-                        )
-                    } else {
-                        formatRelativeShort(call.timestamp)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.extendedColors.onSurfaceSoft,
-                )
+private fun FitColumn(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val childConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+        val placeables = measurables.map { it.measure(childConstraints) }
+        val dropOrder = measurables.map { (it.layoutId as? Int) ?: DropOrder.REQUIRED }
+        val kept = BooleanArray(placeables.size) { true }
+        var totalHeight = placeables.sumOf { it.height }
+        if (constraints.hasBoundedHeight) {
+            placeables.indices
+                .filter { dropOrder[it] > DropOrder.REQUIRED }
+                .sortedByDescending { dropOrder[it] }
+                .forEach { index ->
+                    if (totalHeight > constraints.maxHeight) {
+                        kept[index] = false
+                        totalHeight -= placeables[index].height
+                    }
+                }
+        }
+        layout(constraints.maxWidth, constraints.constrainHeight(totalHeight)) {
+            var y = 0
+            placeables.forEachIndexed { index, placeable ->
+                if (kept[index]) {
+                    placeable.place(0, y)
+                    y += placeable.height
+                }
             }
         }
+    }
+}
+
+/** Small all-caps-free section heading: quieter than the content under it, so the eye lands on
+ * the data, not the label. */
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.extendedColors.onSurfaceSoft,
+        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+    )
+}
+
+/** One of this number's latest calls (the one that just ended first), so the screen answers
+ * "when did we last speak / how often do they call" without opening Contact Detail. Same
+ * direction glyphs and colours as the Recent list's rows (CallLogRow), so it reads at a glance. */
+@Composable
+private fun RecentCallRow(call: CallHistoryEntry) {
+    val (icon, tint) = when (call.callType) {
+        CallType.OUTGOING -> Icons.AutoMirrored.Filled.CallMade to MaterialTheme.extendedColors.callOutgoing
+        CallType.MISSED -> Icons.AutoMirrored.Filled.CallMissed to MaterialTheme.extendedColors.callMissed
+        CallType.INCOMING, CallType.OTHER -> Icons.AutoMirrored.Filled.CallReceived to MaterialTheme.extendedColors.callIncoming
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = when (call.callType) {
+                CallType.INCOMING -> stringResource(R.string.contact_detail_call_type_incoming)
+                CallType.OUTGOING -> stringResource(R.string.contact_detail_call_type_outgoing)
+                CallType.MISSED -> stringResource(R.string.call_status_missed)
+                CallType.OTHER -> stringResource(R.string.contact_detail_call_type_other)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = if (call.durationSeconds > 0L) {
+                stringResource(
+                    R.string.call_ended_status_line,
+                    formatRelativeShort(call.timestamp),
+                    formatCallTimer(call.durationSeconds.toInt()),
+                )
+            } else {
+                formatRelativeShort(call.timestamp)
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.extendedColors.onSurfaceSoft,
+        )
     }
 }
 
 /** A free-text note about this number (see [CallNotesRepository]) — shows the saved one, and
- * offers Save only while the text differs from it. */
+ * offers Save (inside the field, so typing never changes the screen's layout) only while the
+ * text differs from it. A filled, borderless field: it should look like a place to jot something
+ * down, not like a form. */
 @Composable
 private fun CallNoteSection(savedNote: String, onSaveNote: (String) -> Unit) {
     var note by remember(savedNote) { mutableStateOf(savedNote) }
     var lastSaved by remember(savedNote) { mutableStateOf(savedNote) }
-    Column(
+    TextField(
+        value = note,
+        onValueChange = { note = it },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 12.dp),
-        horizontalAlignment = Alignment.End,
-    ) {
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.call_ended_note_placeholder)) },
-            textStyle = MaterialTheme.typography.bodyMedium,
-            maxLines = 3,
-        )
-        if (note.trim() != lastSaved) {
-            TextButton(
-                onClick = {
-                    lastSaved = note.trim()
-                    onSaveNote(note)
-                },
-            ) {
-                Text(text = stringResource(R.string.call_ended_note_save), style = MaterialTheme.typography.labelLarge)
+            .padding(horizontal = ScreenMargin)
+            .padding(top = 10.dp, bottom = 12.dp),
+        placeholder = { Text(stringResource(R.string.call_ended_note_placeholder)) },
+        textStyle = MaterialTheme.typography.bodyMedium,
+        singleLine = true,
+        shape = SectionShape,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+        ),
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = null,
+                tint = MaterialTheme.extendedColors.onSurfaceSoft,
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        trailingIcon = if (note.trim() != lastSaved) {
+            {
+                IconButton(
+                    onClick = {
+                        lastSaved = note.trim()
+                        onSaveNote(note)
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = stringResource(R.string.call_ended_note_save),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
-        }
-    }
+        } else {
+            null
+        },
+    )
 }
 
-/** Same shape as [ActionButton], but with WhatsApp's full-colour logo — tinting would flatten it. */
+/** Same footprint as [ActionButton], but with WhatsApp's full-colour logo — tinting would
+ * flatten it. */
 @Composable
 private fun WhatsAppActionButton(onClick: () -> Unit) {
     val label = stringResource(R.string.contact_detail_action_whatsapp)
     Column(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
             painter = painterResource(R.drawable.ic_whatsapp),
-            contentDescription = label,
+            contentDescription = null,
             modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape),
+                .size(ActionButtonSize)
+                .clip(ActionButtonShape)
+                .clickable(role = Role.Button, onClick = onClick),
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.extendedColors.onSurfaceSoft,
             textAlign = TextAlign.Center,
         )
     }
 }
 
-/** Ported from the old AfterCallScreen's "Was this call spam?" prompt — the one feature that
- * screen had that this card didn't, now that AfterCallScreen no longer fires on call end. Only
- * shown for the normal/blue variant; the red spam variant already implies spam status, so asking
- * again would be redundant. [onReportSpam] just opens [SpamCategoryPickerSheet] (see
- * [CallEndedRoute]'s own `showSpamCategoryPicker` state) — build-2 QA #21 was specifically that
- * this one report entry point skipped the picker every other one in the app already shows,
- * defaulting straight to [SpamCategory.OTHER] without asking. [reported] is hoisted up to
- * [CallEndedRoute] (same shape as [CallEndedCard]'s own isBlocked/onToggleBlock) since it reflects
- * a real repository write. "No, it's fine" has nothing to persist, so it just closes the whole
- * card via the same [onDismiss] the header's X button uses, rather than only hiding this section. */
+/** "Was this call spam?" — only for a number not already marked. A tonal card with the question
+ * and its two answers; the destructive answer carries the colour, the harmless one is outlined.
+ * [onReportSpam] opens SpamCategoryPickerSheet (see CallEndedRoute); "No, it's fine" has nothing
+ * to persist, so it just closes the screen via the same [onDismiss] the header's X uses. Once
+ * [reported], the card collapses to a one-line confirmation. */
 @Composable
 private fun SpamReportSection(reported: Boolean, onReportSpam: () -> Unit, onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = ScreenMargin)
+            .padding(bottom = 12.dp)
+            .clip(SectionShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        if (reported) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.Shield,
-                    contentDescription = null,
-                    tint = MaterialTheme.extendedColors.spam,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.call_ended_reported_as_spam),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        } else {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Filled.Shield,
+                contentDescription = null,
+                tint = if (reported) MaterialTheme.extendedColors.spam else MaterialTheme.extendedColors.onSurfaceSoft,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.spam_report_question),
+                text = stringResource(if (reported) R.string.call_ended_reported_as_spam else R.string.spam_report_question),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(modifier = Modifier.height(12.dp))
+        }
+        if (!reported) {
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
+                        .height(40.dp),
                 ) {
                     Text(text = stringResource(R.string.spam_report_not_spam), style = MaterialTheme.typography.labelLarge)
                 }
@@ -666,7 +767,7 @@ private fun SpamReportSection(reported: Boolean, onReportSpam: () -> Unit, onDis
                     onClick = onReportSpam,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
+                        .height(40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.extendedColors.spam,
                         contentColor = Color.White,
@@ -679,8 +780,15 @@ private fun SpamReportSection(reported: Boolean, onReportSpam: () -> Unit, onDis
     }
 }
 
+/**
+ * The hero: who it was and how the call went, in the screen's one saturated colour (brand blue,
+ * or red for a number marked as spam) running up behind the status bar. Hierarchy by size and
+ * weight, not by more colour — the name/number is the largest thing on the screen, the outcome
+ * sits under it as quiet translucent chips. Tapping the identity row opens the profile details
+ * (the chevron next to the name says so), replacing the old full-width "View profile" button.
+ */
 @Composable
-private fun HeaderBand(
+private fun HeroBand(
     isSpam: Boolean,
     isIncoming: Boolean,
     durationSeconds: Long,
@@ -689,6 +797,8 @@ private fun HeaderBand(
     contact: Contact?,
     spamMark: SpamMark?,
     phoneNumber: String,
+    profileExpanded: Boolean,
+    onToggleProfile: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val gradient = if (isSpam) {
@@ -697,57 +807,129 @@ private fun HeaderBand(
         Brush.linearGradient(listOf(NormalGradientStart, NormalGradientEnd))
     }
 
+    val isMissed = isCallMissed(isIncoming, durationSeconds)
     val statusWord = stringResource(callStatusWord(isIncoming, durationSeconds, wasDeclined))
-    val statusLine = stringResource(R.string.call_ended_status_line, statusWord, formatRelativeShort(endedAtMillis))
+    val formattedNumber = formatPhoneNumberForDisplay(phoneNumber)
     val titleLine = when {
         isSpam -> spamMark!!.category.displayLabel()
         contact != null -> contact.name
-        else -> formatPhoneNumberForDisplay(phoneNumber)
+        else -> formattedNumber
     }
-    val subtextLine = if (isSpam) {
-        stringResource(R.string.call_ended_marked_as_spam_subtext, formatRelativeShort(spamMark!!.markedAt))
-    } else {
-        formatCallTimer(durationSeconds.toInt())
-    }
+    // The number, whenever the title above isn't already the number itself.
+    val subtitleLine = if (isSpam || contact != null) formattedNumber else null
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(HeaderTopShape)
+            .clip(HeroShape)
             .background(gradient)
-            .padding(16.dp),
+            .statusBarsPadding()
+            .padding(start = ScreenMargin, end = 8.dp, top = 8.dp, bottom = 18.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(end = 28.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HeaderAvatar(isSpam = isSpam, contact = contact)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column {
-                Text(
-                    text = statusLine,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.8f),
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.call_ended_view_profile),
+                        onClick = onToggleProfile,
+                    )
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HeaderAvatar(isSpam = isSpam, contact = contact)
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f, fill = false)) {
+                    Text(
+                        text = titleLine,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (subtitleLine != null) {
+                        Text(
+                            text = subtitleLine,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = if (profileExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .padding(start = 4.dp)
+                        .size(22.dp),
                 )
-                Text(
-                    text = titleLine,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
-                Text(
-                    text = subtextLine,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.85f),
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.call_ended_dismiss_content_description),
+                    tint = Color.White,
                 )
             }
         }
 
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)) {
-            Icon(imageVector = Icons.Filled.Close, contentDescription = stringResource(R.string.call_ended_dismiss_content_description), tint = Color.White)
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.padding(end = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeroChip(
+                icon = when {
+                    isMissed || wasDeclined -> Icons.AutoMirrored.Filled.CallMissed
+                    isIncoming -> Icons.AutoMirrored.Filled.CallReceived
+                    else -> Icons.AutoMirrored.Filled.CallMade
+                },
+                text = statusWord,
+            )
+            if (durationSeconds > 0L) {
+                HeroChip(icon = Icons.Filled.Schedule, text = formatCallTimer(durationSeconds.toInt()))
+            }
+            Text(
+                text = if (isSpam) {
+                    stringResource(R.string.call_ended_marked_as_spam_subtext, formatRelativeShort(spamMark!!.markedAt))
+                } else {
+                    formatRelativeShort(endedAtMillis)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+    }
+}
+
+/** A quiet translucent pill on the hero: one fact about the call. */
+@Composable
+private fun HeroChip(icon: ImageVector, text: String) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.18f))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 1,
+        )
     }
 }
 
@@ -760,7 +942,10 @@ private fun HeaderBand(
 private fun HeaderAvatar(isSpam: Boolean, contact: Contact?) {
     Box(
         modifier = Modifier
-            .size(52.dp)
+            .size(60.dp)
+            // A translucent ring lifts the avatar off the gradient without a hard edge.
+            .border(2.dp, Color.White.copy(alpha = 0.35f), CircleShape)
+            .padding(3.dp)
             .clip(CircleShape)
             .background(if (isSpam) Color.White.copy(alpha = 0.22f) else LightSurfaceVariant),
         contentAlignment = Alignment.Center,
@@ -775,7 +960,7 @@ private fun HeaderAvatar(isSpam: Boolean, contact: Contact?) {
             contact?.photoUri != null -> AsyncImage(
                 model = contact.photoUri,
                 contentDescription = null,
-                modifier = Modifier.size(52.dp).clip(CircleShape),
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
             )
             else -> Icon(
                 imageVector = Icons.Filled.Person,
@@ -784,33 +969,6 @@ private fun HeaderAvatar(isSpam: Boolean, contact: Contact?) {
                 modifier = Modifier.size(28.dp),
             )
         }
-    }
-}
-
-/** Solid rounded-rect button (not a translucent row) sitting below the header band, inset with
- * the same horizontal margin as the card's other inner content — its color is a darker shade of
- * that variant's own header gradient, so it reads as "belonging" to the header above it. Tapping
- * it still just toggles the detail panel below; there's no separate chevron/expand indicator. */
-@Composable
-private fun ViewProfileButton(isSpam: Boolean, onToggle: () -> Unit) {
-    val backgroundColor = if (isSpam) SpamButtonColor else NormalButtonColor
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(top = 14.dp, bottom = 10.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .clickable(onClick = onToggle)
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = stringResource(R.string.call_ended_view_profile),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-        )
     }
 }
 
@@ -827,8 +985,11 @@ private fun ProfileDetailsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = ScreenMargin)
+            .padding(top = 12.dp)
+            .clip(SectionShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         if (isSpam && spamMark != null) {
             DetailRow(
@@ -888,25 +1049,41 @@ private fun DetailRow(icon: ImageVector, text: String) {
 }
 
 @Composable
-private fun ActionButton(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
+private fun ActionButton(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    // The screen's single primary action is solid [tint]; every other one is a soft tint of it.
+    filled: Boolean = false,
+) {
+    // Only the squircle is the touch target (so the ripple matches its shape and never clips the
+    // label); merging lets TalkBack read the label as the button's name.
     Column(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.semantics(mergeDescendants = true) {},
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(tint.copy(alpha = 0.14f)),
+                .size(ActionButtonSize)
+                .clip(ActionButtonShape)
+                .background(if (filled) tint else tint.copy(alpha = 0.12f))
+                .clickable(role = Role.Button, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(imageVector = icon, contentDescription = label, tint = tint, modifier = Modifier.size(20.dp))
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (filled) Color.White else tint,
+                modifier = Modifier.size(22.dp),
+            )
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (filled) MaterialTheme.colorScheme.onSurface else MaterialTheme.extendedColors.onSurfaceSoft,
+            fontWeight = if (filled) FontWeight.SemiBold else FontWeight.Normal,
             textAlign = TextAlign.Center,
         )
     }

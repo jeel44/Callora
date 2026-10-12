@@ -74,6 +74,16 @@
 
                 <data android:scheme="tel" />
             </intent-filter>
+            <!-- tel: links opened with VIEW (web pages, chat apps) — same as DIAL: the dialpad
+                 opens prefilled, see MainActivity.dialNumberFromIntent. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="tel" />
+            </intent-filter>
         </activity>
 
         <!-- Alternate component name for MainActivity, used only by InCallServiceImpl when
@@ -89,7 +99,7 @@
             android:exported="false"
             android:theme="@style/Theme.Callora.IncomingCall" />
 
-        <!-- Truecaller-style post-call popup (see CallEndedActivity's own doc). Plain Activity,
+        <!-- The full-screen call-ended screen (see CallEndedActivity's own doc). Plain Activity,
              not a system overlay window. exported=false: only ever launched internally, from
              InCallServiceImpl (default phone app) or the PostCallMonitor triggers (not default). singleTask so a second call
              ending in quick succession reuses this instance instead of stacking popups. -->

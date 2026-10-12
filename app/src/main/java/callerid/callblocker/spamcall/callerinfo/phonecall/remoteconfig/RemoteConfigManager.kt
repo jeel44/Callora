@@ -10,6 +10,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val TAG = "RemoteConfigManager"
 
+private const val CALLEND_FORMAT_BANNER = "banner"
+private const val CALLEND_FORMAT_NATIVE = "native"
+
 /**
  * Single owner of the app's [FirebaseRemoteConfig] instance — in-app defaults, the one startup
  * fetch, and typed accessors for every remote key, so no call site reads raw key strings itself.
@@ -34,6 +37,8 @@ object RemoteConfigManager {
     const val KEY_AD_HOME_BANNER_UNIT_ID = "ad_home_banner_unit_id"
     const val KEY_AD_CALLEND_NATIVE_ENABLED = "ad_callend_native_enabled"
     const val KEY_AD_CALLEND_NATIVE_UNIT_ID = "ad_callend_native_unit_id"
+    const val KEY_AD_CALLEND_BANNER_UNIT_ID = "ad_callend_banner_unit_id"
+    const val KEY_AD_CALLEND_FORMAT = "ad_callend_format"
 
     // Google's official TEST App Open ad unit ID. TODO(before release): replace with Callora's
     // real App Open unit ID (here and/or in the Remote Config console).
@@ -74,6 +79,8 @@ object RemoteConfigManager {
         KEY_AD_HOME_BANNER_UNIT_ID to DEFAULT_AD_HOME_BANNER_UNIT_ID,
         KEY_AD_CALLEND_NATIVE_ENABLED to false,
         KEY_AD_CALLEND_NATIVE_UNIT_ID to DEFAULT_AD_LANGUAGE_NATIVE_UNIT_ID,
+        KEY_AD_CALLEND_BANNER_UNIT_ID to DEFAULT_AD_HOME_BANNER_UNIT_ID,
+        KEY_AD_CALLEND_FORMAT to CALLEND_FORMAT_BANNER,
     )
 
     private val remoteConfig: FirebaseRemoteConfig by lazy { FirebaseRemoteConfig.getInstance() }
@@ -164,4 +171,24 @@ object RemoteConfigManager {
 
     val callEndNativeAdUnitId: String
         get() = remoteConfig.getString(KEY_AD_CALLEND_NATIVE_UNIT_ID).ifBlank { DEFAULT_AD_LANGUAGE_NATIVE_UNIT_ID }
+
+    /**
+     * Which ad the call-ended screen shows: `ad_callend_format` = "banner" (inline adaptive
+     * banner, the default — also what any unrecognised value means) or "native". Either way the
+     * placement's on/off switch is [isCallEndNativeAdEnabled] — one placement, one switch.
+     */
+    val callEndAdFormat: CallEndAdFormat
+        get() = if (remoteConfig.getString(KEY_AD_CALLEND_FORMAT).trim().equals(CALLEND_FORMAT_NATIVE, ignoreCase = true)) {
+            CallEndAdFormat.NATIVE
+        } else {
+            CallEndAdFormat.BANNER
+        }
+
+    /** The banner format's own unit (a native unit can't serve a banner), defaulting to the same
+     * test adaptive-banner unit as Home's until a real one is set. */
+    val callEndBannerAdUnitId: String
+        get() = remoteConfig.getString(KEY_AD_CALLEND_BANNER_UNIT_ID).ifBlank { DEFAULT_AD_HOME_BANNER_UNIT_ID }
 }
+
+/** See [RemoteConfigManager.callEndAdFormat]. */
+enum class CallEndAdFormat { BANNER, NATIVE }

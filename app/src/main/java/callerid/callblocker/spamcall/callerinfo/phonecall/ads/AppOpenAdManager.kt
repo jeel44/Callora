@@ -29,6 +29,9 @@ private const val TAG = "AppOpenAdManager"
 // Google's recommended App Open ad expiry — an older ad may no longer be valid to show.
 private const val AD_EXPIRY_MILLIS = 4 * 60 * 60 * 1000L
 
+// Frequency cap: at most one App Open ad per this long, however often the app is reopened.
+private const val MIN_SHOW_INTERVAL_MILLIS = 10 * 60 * 1000L
+
 // How long after a foreground event an ad may still appear. Cold start gets a few seconds since
 // Remote Config + SDK init + the ad request all have to happen first; a warm resume only shows an
 // ad that is already loaded (the window just covers ON_START -> MainActivity.onResume), so an ad
@@ -99,6 +102,9 @@ object AppOpenAdManager : DefaultLifecycleObserver, Application.ActivityLifecycl
     // (cold start: MainActivity.onCreate runs before ON_START) — consumed by that ON_START.
     private var skipNextForeground = false
 
+    // elapsedRealtime() of the last ad shown this process; 0 = none yet. See MIN_SHOW_INTERVAL_MILLIS.
+    private var lastShownAtMillis = 0L
+
     /** Called once from CalloraApplication.onCreate() (main thread). */
     fun initialize(app: Application) {
         application = app
@@ -145,6 +151,17 @@ object AppOpenAdManager : DefaultLifecycleObserver, Application.ActivityLifecycl
         if (!ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             skipNextForeground = true
         }
+    }
+
+    /**
+     * Called just before this app itself sends the user to another app (SMS, email, share,
+     * contact editor, a web link — see Context.startExternalActivity): coming back from that
+     * must not be greeted with an ad. Unlike [suppressCurrentForeground] this is always about
+     * the NEXT foreground event — the app is in the foreground right now, about to leave it.
+     */
+    fun suppressNextForeground() {
+        showDeadlineMillis = 0L
+        skipNextForeground = true
     }
 
     // ProcessLifecycleOwner ON_START: the app came to the foreground (cold start or from background).
@@ -224,6 +241,12 @@ object AppOpenAdManager : DefaultLifecycleObserver, Application.ActivityLifecycl
         }
         // Re-checked at show time too, not just at load time.
         if (!isEnabled || !RemoteConfigManager.isAppOpenAdEnabled || isShowingAd) return
+        if (lastShownAtMillis != 0L &&
+            SystemClock.elapsedRealtime() - lastShownAtMillis < MIN_SHOW_INTERVAL_MILLIS
+        ) {
+            showDeadlineMillis = 0L
+            return
+        }
         val activity = resumedActivity as? MainActivity ?: return
         if (!isCallIdle(CallRepository.callState.value.state)) {
             showDeadlineMillis = 0L
@@ -259,6 +282,7 @@ object AppOpenAdManager : DefaultLifecycleObserver, Application.ActivityLifecycl
             }
         }
         isShowingAd = true
+        lastShownAtMillis = SystemClock.elapsedRealtime()
         showDeadlineMillis = 0L
         appOpenAd = null // single-use; clearing it first lets loadAd() fetch the next one
         ad.show(activity)

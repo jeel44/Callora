@@ -226,7 +226,7 @@
     <string name="spam_center_stat_blocked_week">Bloqués cette semaine</string>
     <string name="spam_center_stat_blocked_alltime">Bloqués au total</string>
     <string name="spam_center_rule_auto_block_title">Bloquer automatiquement les principaux spammeurs</string>
-    <string name="spam_center_rule_auto_block_subtitle">Numéros signalés par la communauté</string>
+    <string name="spam_center_rule_auto_block_subtitle">Numéros que vous avez marqués comme spam</string>
     <string name="spam_center_rule_telemarketers_title">Bloquer le télémarketing</string>
     <string name="spam_center_rule_telemarketers_subtitle">Appels commerciaux et promotionnels</string>
     <string name="spam_center_rule_international_title">Bloquer le spam international</string>

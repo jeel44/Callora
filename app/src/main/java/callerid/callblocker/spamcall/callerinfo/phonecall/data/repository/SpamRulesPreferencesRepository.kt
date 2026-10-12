@@ -13,9 +13,9 @@ private const val BLOCK_INTERNATIONAL_SPAM_KEY = "block_international_spam"
  * async machinery. Defaults match what SpamCenterScreen originally hardcoded as in-memory
  * `remember` state (auto-block and telemarketers on, international off) for a fresh install.
  *
- * No real community spam-detection database exists yet (see SpamCenterScreen's own doc comment),
- * so these toggles don't drive any blocking decision themselves yet — this only fixes them
- * actually surviving a restart, which is what build-2 QA (#7) flagged.
+ * Read by CalloraCallScreeningService on every screened call — see its shouldRejectByRules for
+ * what each rule actually blocks. No community spam database exists: "top spammers" are the
+ * numbers this user marked as spam themselves.
  */
 object SpamRulesPreferencesRepository {
 

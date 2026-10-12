@@ -47,6 +47,9 @@ data class ActiveCallInfo(
     val simAccountColor: Int? = null,
     // Real Call.STATE_HOLDING, not a UI-only flag - see CallRepository.hold()/unhold().
     val isOnHold: Boolean = false,
+    // Whether this call can be put on hold at all (Call.Details.CAPABILITY_HOLD) — the Hold
+    // control is hidden otherwise rather than offered and silently doing nothing.
+    val canHold: Boolean = false,
 )
 
 /** [displayName] is a snapshot of [ActiveCallInfo.displayName] taken at the moment the call is
@@ -170,6 +173,15 @@ object CallRepository {
     private val callback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             applyCallState(call, state)
+        }
+
+        // Capabilities arrive separately from state: telephony adds CAPABILITY_HOLD a moment
+        // AFTER the call goes active, so reading it only in applyCallState would miss it.
+        override fun onDetailsChanged(call: Call, details: Call.Details) {
+            if (call !== trackedCall) return
+            val info = _callState.value
+            val canHold = info.isOnHold || details.can(Call.Details.CAPABILITY_HOLD)
+            if (info.canHold != canHold) _callState.value = info.copy(canHold = canHold)
         }
 
         override fun onCannedTextResponsesLoaded(call: Call, cannedTextResponses: MutableList<String>?) {
@@ -403,6 +415,7 @@ object CallRepository {
             simAccountLabel = trackedCallSimAccount?.label,
             simAccountColor = trackedCallSimAccount?.color,
             isOnHold = isOnHold,
+            canHold = isOnHold || call.details?.can(Call.Details.CAPABILITY_HOLD) == true,
         )
         if (_callState.value.isResolvingContactName && resolvedNumber != null) resolveDisplayName(resolvedNumber)
         updateActiveCallUiState(uiState, resolvedNumber, connectTimestamp)

@@ -6,6 +6,7 @@ import android.provider.CallLog
 import android.telecom.DisconnectCause
 import android.telephony.PhoneNumberUtils
 import android.telephony.TelephonyManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.preloadCallEndAd
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.AfterCallPreferencesRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallLogRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.EndedCall
@@ -17,6 +18,14 @@ import kotlinx.coroutines.withContext
 
 private const val PHONE_STATE_PREFS = "post_call_phone_state_prefs"
 private const val LAST_STATE_KEY = "last_state"
+private const val CALL_STARTED_AT_KEY = "call_started_at"
+
+// Call-log DATE is the call's start as the telephony stack saw it, which can be marginally
+// earlier than the moment the phone-state report reached this app.
+private const val CALL_START_SLACK_MILLIS = 5_000L
+// A recorded call start older than this can't belong to the call that just ended (phone-state
+// tracking wasn't running for it), so it isn't used to filter the call log.
+private const val CALL_START_MAX_AGE_MILLIS = 6 * 60 * 60 * 1000L
 
 // The call-log row for a call is written slightly after the call ends.
 private const val CALL_LOG_ATTEMPTS = 6
@@ -72,7 +81,15 @@ object PostCallMonitor {
         // The same change arrives more than once (the broadcast is delivered twice with
         // READ_CALL_LOG held, and the service reports it too) — only a real transition counts.
         if (state == previousState) return false
-        prefs.edit().putString(LAST_STATE_KEY, state).apply()
+        val editor = prefs.edit().putString(LAST_STATE_KEY, state)
+        if (previousState == TelephonyManager.EXTRA_STATE_IDLE) {
+            editor.putLong(CALL_STARTED_AT_KEY, System.currentTimeMillis())
+        }
+        editor.apply()
+        if (state != TelephonyManager.EXTRA_STATE_IDLE) {
+            // A call is starting (ringing or dialling): have the call-ended screen's ad ready.
+            preloadCallEndAd(reason = "phone state $state")
+        }
         return state == TelephonyManager.EXTRA_STATE_IDLE
     }
 
@@ -91,7 +108,16 @@ object PostCallMonitor {
         if (isDialerRoleHeld(context)) return@withContext null
         if (!AfterCallPreferencesRepository().afterCallScreenEnabled(context).first()) return@withContext null
 
-        val logged = awaitLoggedCall(context, hintNumber)
+        // When the phone-state reports saw this call start, only a call-log row from then on
+        // can be it — otherwise the previous call's row (still "just ended" by the clock) would
+        // be shown while this call's own row hasn't been written yet.
+        val recordedStart = context.getSharedPreferences(PHONE_STATE_PREFS, Context.MODE_PRIVATE)
+            .getLong(CALL_STARTED_AT_KEY, 0L)
+        val notBeforeMillis = recordedStart
+            .takeIf { it != 0L && System.currentTimeMillis() - it < CALL_START_MAX_AGE_MILLIS }
+            ?.minus(CALL_START_SLACK_MILLIS)
+
+        val logged = awaitLoggedCall(context, hintNumber, notBeforeMillis)
         when {
             logged != null ->
                 // The system's own blocking (or CalloraCallScreeningService) rejected it — the
@@ -120,11 +146,12 @@ object PostCallMonitor {
         }
     }
 
-    private suspend fun awaitLoggedCall(context: Context, hintNumber: String?): EndedCall? {
+    private suspend fun awaitLoggedCall(context: Context, hintNumber: String?, notBeforeMillis: Long?): EndedCall? {
         val callLogRepository = CallLogRepository()
         repeat(CALL_LOG_ATTEMPTS) { attempt ->
             val latest = callLogRepository.getLatestCall(context)
             if (latest != null && latest.justEnded() &&
+                (notBeforeMillis == null || latest.startedAtMillis >= notBeforeMillis) &&
                 (hintNumber.isNullOrBlank() || PhoneNumberUtils.compare(latest.phoneNumber, hintNumber))
             ) {
                 return latest

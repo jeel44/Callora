@@ -32,6 +32,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.BannerAdSlotState
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.CallEndBannerAdManager
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.callended.CallEndBannerState
+import callerid.callblocker.spamcall.callerinfo.phonecall.ui.util.findActivity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.HomeBannerAdController
 import com.google.android.gms.ads.AdView
 
@@ -152,6 +157,63 @@ private fun BannerAdShimmer(height: Dp) {
             }
             Spacer(Modifier.width(10.dp))
             ShimmerBlock(brush, RoundedCornerShape(percent = 50), Modifier.width(72.dp).height(30.dp))
+        }
+    }
+}
+
+/**
+ * The call-ended screen's square banner: nothing when hidden, a shimmer the size of the slot
+ * while a late request is still in flight, then the banner. The AdView is preloaded and owned
+ * elsewhere (CallEndBannerAdManager / CallEndedAdsViewModel) — this only attaches it, pointing
+ * it at the Activity showing it so ad clicks open from there.
+ */
+@Composable
+fun CallEndBannerAdSlot(state: CallEndBannerState, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(18.dp)
+    when (state) {
+        CallEndBannerState.Hidden -> Unit
+        is CallEndBannerState.Loading -> BoxWithConstraints(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(state.heightDp.dp)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
+            ShimmerBlock(
+                brush = rememberAdShimmerBrush(widthPx = constraints.maxWidth.toFloat()),
+                shape = shape,
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+            )
+        }
+        is CallEndBannerState.Loaded -> {
+            val activity = LocalContext.current.findActivity()
+            val banner = state.banner
+            AndroidView(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(banner.heightDp.dp)
+                    .clip(shape)
+                    .background(MaterialTheme.colorScheme.surface),
+                factory = { context -> FrameLayout(context) },
+                update = { container ->
+                    if (container.tag !== banner) {
+                        container.tag = banner
+                        if (activity != null) CallEndBannerAdManager.rebind(banner, activity)
+                        (banner.adView.parent as? ViewGroup)?.removeView(banner.adView)
+                        container.removeAllViews()
+                        container.addView(
+                            banner.adView,
+                            FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                Gravity.CENTER,
+                            ),
+                        )
+                    }
+                },
+                // Only detaches: the AdView is destroyed by CallEndedAdsViewModel.
+                onRelease = { container -> container.removeAllViews() },
+            )
         }
     }
 }

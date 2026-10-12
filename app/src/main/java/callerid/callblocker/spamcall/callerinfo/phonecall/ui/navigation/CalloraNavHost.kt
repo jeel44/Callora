@@ -61,7 +61,6 @@ import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallRepository
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.CallUiState
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getCallCapableAccounts
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.getDefaultOutgoingAccount
-import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.AutostartPromptDialog
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.CallBannerHost
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.PermissionPreviewBottomSheet
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.components.SimPickerBottomSheet
@@ -101,6 +100,16 @@ private const val DIAG_TAG = "DIAG_CalloraNavHost"
 
 /** Held while [CalloraNavHostContent]'s SimPickerBottomSheet is up — the number the user tapped
  * plus the 2+ call-capable accounts to choose between (see placeCallWithSimCheck). */
+// Screens a deep link (other than an incoming call) must never navigate away from.
+private val FIRST_RUN_ROUTES = setOf(
+    Routes.SPLASH,
+    Routes.LANGUAGE_SELECT,
+    Routes.ONBOARDING_1,
+    Routes.ONBOARDING_2,
+    Routes.ONBOARDING_3,
+    Routes.SET_DEFAULT,
+)
+
 private data class SimPickerRequest(val phoneNumber: String, val accounts: List<CallAccount>)
 
 /**
@@ -143,7 +152,8 @@ private fun startDestinationFor(context: Context, onboardingComplete: Boolean): 
     }
     if (!onboardingComplete) return Routes.SPLASH
     // Set Default is a hard gate (default phone app is required to use the app), and also the
-    // one place its follow-up requests (CALL_SCREENING role, display over other apps) get made.
+    // one place its follow-up requests (CALL_SCREENING role, display over other apps, OEM
+    // autostart) get made.
     return if (!isDialerRoleHeld(context) || hasPendingSetupRequests(context)) {
         Routes.SET_DEFAULT
     } else {
@@ -434,7 +444,19 @@ private fun CalloraNavHostContent(
     LaunchedEffect(pendingDeepLinkRoute) {
         Log.i(DIAG_TAG, "pendingDeepLinkRoute effect: value=$pendingDeepLinkRoute, currentRoute=${navController.currentDestination?.route}")
         if (pendingDeepLinkRoute != null) {
-            navController.navigate(pendingDeepLinkRoute) { launchSingleTop = true }
+            val currentRoute = navController.currentDestination?.route
+            if (pendingDeepLinkRoute != Routes.INCOMING_CALL && currentRoute in FIRST_RUN_ROUTES) {
+                // Only a ringing call may cut in front of first-run and the mandatory Set
+                // Default gate — any other deep link would be a way around it.
+                onDeepLinkConsumed()
+                return@LaunchedEffect
+            }
+            navController.navigate(pendingDeepLinkRoute) {
+                launchSingleTop = true
+                // A second tel: link while the dialpad is open must replace its number, not
+                // leave the old dialpad (and its typed digits) on screen.
+                if (pendingDeepLinkRoute.startsWith("dialpad")) popUpTo(Routes.DIALPAD) { inclusive = true }
+            }
             Log.i(DIAG_TAG, "pendingDeepLinkRoute effect: navigated to $pendingDeepLinkRoute, backstack=${navController.currentBackStack.value.map { it.destination.route }}")
             onDeepLinkConsumed()
         }
@@ -561,13 +583,16 @@ private fun CalloraNavHostContent(
                 },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenAllContacts = { navController.navigate(Routes.ALL_CONTACTS) },
-                onOpenDialpad = { navController.navigate(Routes.DIALPAD) },
+                onOpenDialpad = { navController.navigate(Routes.dialpadRoute()) },
                 onCall = attemptPlaceCall,
             )
-            AutostartPromptDialog()
         }
-        composable(Routes.DIALPAD) {
+        composable(
+            route = Routes.DIALPAD,
+            arguments = listOf(navArgument("number") { type = NavType.StringType; defaultValue = "" }),
+        ) { backStackEntry ->
             DialpadScreen(
+                initialNumber = backStackEntry.arguments?.getString("number").orEmpty(),
                 onBack = { navController.popBackStack() },
                 onCall = attemptPlaceCall,
             )

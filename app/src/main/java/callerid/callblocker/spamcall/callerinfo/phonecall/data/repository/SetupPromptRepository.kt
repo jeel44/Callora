@@ -9,8 +9,8 @@ private const val AUTOSTART_PROMPT_SHOWN_KEY = "autostart_prompt_shown"
 
 /**
  * Whether Set Default's two optional follow-up requests (the CALL_SCREENING role and "display
- * over other apps") have ever been made on this install — see SetDefaultScreen — and whether
- * Home's autostart dialog (AutostartPromptDialog) has been shown. Plain
+ * over other apps") have ever been made on this install, and whether its autostart dialog
+ * (AutostartPromptDialog) has been shown — see SetDefaultScreen. Plain
  * SharedPreferences, same reasoning as [ThemePreferencesRepository]: read synchronously while
  * CalloraNavHost resolves its start destination. Once set, a user who declined isn't sent back
  * through Set Default on every launch just to be asked again.

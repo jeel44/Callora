@@ -225,7 +225,7 @@
     <string name="spam_center_stat_blocked_week">이번 주 차단</string>
     <string name="spam_center_stat_blocked_alltime">전체 차단</string>
     <string name="spam_center_rule_auto_block_title">상위 스팸 발신자 자동 차단</string>
-    <string name="spam_center_rule_auto_block_subtitle">커뮤니티에서 신고한 번호</string>
+    <string name="spam_center_rule_auto_block_subtitle">스팸으로 표시한 번호</string>
     <string name="spam_center_rule_telemarketers_title">텔레마케팅 차단</string>
     <string name="spam_center_rule_telemarketers_subtitle">영업 및 광고성 전화</string>
     <string name="spam_center_rule_international_title">국제 스팸 차단</string>

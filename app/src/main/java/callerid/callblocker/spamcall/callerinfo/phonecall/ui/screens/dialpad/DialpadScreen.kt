@@ -184,8 +184,10 @@ fun DialpadScreen(
     onCall: (phoneNumber: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DialpadViewModel = viewModel(),
+    // Prefilled when opened from a tel:/ACTION_DIAL intent.
+    initialNumber: String = "",
 ) {
-    var typedNumber by remember { mutableStateOf("") }
+    var typedNumber by remember { mutableStateOf(initialNumber) }
     val matchingContacts by viewModel.matchingContacts.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
 

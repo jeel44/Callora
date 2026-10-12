@@ -55,14 +55,9 @@
         <item name="android:windowBackground">@color/incoming_call_window_background</item>
     </style>
 
-    <!-- CallEndedActivity's popup — a translucent window (not a normal opaque screen) so
-         whatever app the user was in stays visible, dimmed, behind the floating card;
-         CallEndedRoute draws that dim scrim itself in Compose. No new permission: this is a
-         plain Activity theme, not a system overlay window. -->
+    <!-- CallEndedActivity / PostCallActivity: a normal, opaque, full-screen Activity window
+         (it used to be a translucent window with a floating card, which read as a dialog). -->
     <style name="Theme.Callora.CallEnded" parent="Theme.Callora">
-        <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:windowIsFloating">false</item>
     </style>
 </resources>

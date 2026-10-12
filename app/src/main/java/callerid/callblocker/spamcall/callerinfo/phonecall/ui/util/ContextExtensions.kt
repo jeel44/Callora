@@ -30,7 +30,7 @@ tailrec fun Context.findActivity(): Activity? = when (this) {
  * layer should go through this instead of calling `context.startActivity` directly.
  */
 fun Context.startExternalActivity(intent: Intent) {
-    AppOpenAdManager.suppressCurrentForeground()
+    AppOpenAdManager.suppressNextForeground()
     startActivity(intent)
 }
 
