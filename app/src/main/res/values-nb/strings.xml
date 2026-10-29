@@ -300,7 +300,6 @@
     <string name="setdefault_feature_realtime_id">Sanntids anrops-identifikasjon</string>
     <string name="setdefault_feature_spam_blocked">Spam rapportert av fellesskapet blokkert</string>
     <string name="setdefault_feature_keep_contacts">Beholder alle dine eksisterende kontakter</string>
-    <string name="setdefault_mock_name">Rahul Sharma</string>
     <string name="setdefault_mock_spam_title">Mistenkt spam</string>
     <string name="setdefault_mock_badge_idd">IDENTIFISERT</string>
     <string name="setdefault_mock_badge_blocked">BLOKKERT</string>

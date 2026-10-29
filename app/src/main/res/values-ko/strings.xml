@@ -298,7 +298,6 @@
     <string name="setdefault_feature_realtime_id">실시간 발신자 식별</string>
     <string name="setdefault_feature_spam_blocked">커뮤니티에서 신고한 스팸 차단</string>
     <string name="setdefault_feature_keep_contacts">기존 연락처를 모두 유지</string>
-    <string name="setdefault_mock_name">Rahul Sharma</string>
     <string name="setdefault_mock_spam_title">스팸 의심</string>
     <string name="setdefault_mock_badge_idd">확인됨</string>
     <string name="setdefault_mock_badge_blocked">차단됨</string>

@@ -300,7 +300,6 @@
     <string name="setdefault_feature_realtime_id">Anrufer-Identifikation in Echtzeit</string>
     <string name="setdefault_feature_spam_blocked">Von der Community gemeldeter Spam blockiert</string>
     <string name="setdefault_feature_keep_contacts">Behält alle deine bestehenden Kontakte</string>
-    <string name="setdefault_mock_name">Rahul Sharma</string>
     <string name="setdefault_mock_spam_title">Vermuteter Spam</string>
     <string name="setdefault_mock_badge_idd">IDENTIFIZIERT</string>
     <string name="setdefault_mock_badge_blocked">BLOCKIERT</string>

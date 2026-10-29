@@ -332,10 +332,10 @@ private fun SetDefaultHero(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.Center,
         ) {
             MockCallRow(
-                avatar = { InitialsAvatar(initials = "RS") },
+                avatar = { InitialsAvatar(initials = "JC") },
                 title = stringResource(R.string.setdefault_mock_name),
                 titleColor = Color.White,
-                subtitle = "+91 98765 43210",
+                subtitle = "+1 (555) 010-4821",
                 badgeText = stringResource(R.string.setdefault_mock_badge_idd),
                 badgeColor = MaterialTheme.extendedColors.success,
             )
@@ -344,7 +344,7 @@ private fun SetDefaultHero(modifier: Modifier = Modifier) {
                 avatar = { SpamAvatar() },
                 title = stringResource(R.string.setdefault_mock_spam_title),
                 titleColor = MaterialTheme.extendedColors.spam,
-                subtitle = "+91 70000 12345",
+                subtitle = "+44 7700 900123",
                 badgeText = stringResource(R.string.setdefault_mock_badge_blocked),
                 badgeColor = MaterialTheme.extendedColors.spam,
             )

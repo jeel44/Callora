@@ -317,7 +317,7 @@
     <string name="setdefault_feature_realtime_id">Real-time caller identification</string>
     <string name="setdefault_feature_spam_blocked">Community-reported spam blocked</string>
     <string name="setdefault_feature_keep_contacts">Keeps all your existing contacts</string>
-    <string name="setdefault_mock_name">Rahul Sharma</string>
+    <string name="setdefault_mock_name" translatable="false">James Carter</string>
     <string name="setdefault_mock_spam_title">Suspected spam</string>
     <string name="setdefault_mock_badge_idd">ID\'D</string>
     <string name="setdefault_mock_badge_blocked">BLOCKED</string>
