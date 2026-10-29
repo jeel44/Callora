@@ -264,12 +264,10 @@
     <string name="settings_row_privacy_policy">Privacy policy</string>
     <string name="settings_row_help_feedback">Help &amp; feedback</string>
     <string name="settings_feedback_email_subject">Caller ID Feedback</string>
-    <!-- TODO(before release): replace with the real, monitored support address — build-2 QA #23
-         ("Feedback goes to a personal Gmail address") flagged the old hardcoded
-         tarangsutariya3440@gmail.com as a developer's personal inbox, not a real support
-         channel. This placeholder is deliberately NOT another personal address; it must be
-         swapped for Callora's actual support mailbox before shipping. -->
-    <string name="settings_feedback_email_address" translatable="false">support@calloraapp.com</string>
+    <!-- Help & feedback recipient: the developer's chosen support inbox. Build-2 QA #23 flagged
+         this address as a personal Gmail; the developer has reviewed that and keeps it as the
+         monitored support channel. -->
+    <string name="settings_feedback_email_address" translatable="false">tarangsutariya3440@gmail.com</string>
     <string name="settings_row_share_app">Share app</string>
     <string name="settings_share_text">Check out Caller ID — caller ID &amp; spam blocker: %1$s</string>
     <string name="settings_share_chooser_title">Share Caller ID</string>
