@@ -143,6 +143,10 @@ class HomeBannerAdController(
         val adView = AdView(context)
         adView.setAdSize(adSize)
         adView.adUnitId = unitId
+        // Fires once per impression, auto-refreshes included.
+        adView.setOnPaidEventListener { value ->
+            AdRevenueLogger.log(value, unitId, AdFormat.BANNER, adView.responseInfo)
+        }
         pendingAdView = adView
         // Only the first load result counts: a banner unit with refresh enabled in the AdMob
         // console would otherwise report its own later reloads through this same listener.

@@ -38,7 +38,12 @@ fun requestNativeAd(
     adChoicesPlacement: Int = NativeAdOptions.ADCHOICES_TOP_RIGHT,
 ) {
     AdLoader.Builder(context.applicationContext, adUnitId)
-        .forNativeAd(onLoaded)
+        .forNativeAd { ad ->
+            ad.setOnPaidEventListener { value ->
+                AdRevenueLogger.log(value, adUnitId, AdFormat.NATIVE, ad.responseInfo)
+            }
+            onLoaded(ad)
+        }
         .withAdListener(object : AdListener() {
             override fun onAdFailedToLoad(error: LoadAdError) = onFailed(error)
         })

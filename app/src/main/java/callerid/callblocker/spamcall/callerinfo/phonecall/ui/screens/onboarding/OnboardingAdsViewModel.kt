@@ -5,6 +5,8 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AdFormat
+import callerid.callblocker.spamcall.callerinfo.phonecall.ads.AdRevenueLogger
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.InlineNativeAdController
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.awaitAdPlacementEnabled
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.requestNativeAd
@@ -150,12 +152,16 @@ class OnboardingAdsViewModel(application: Application) : AndroidViewModel(applic
                 result.complete(null)
                 return@launch
             }
+            val unitId = RemoteConfigManager.onboardingInterstitialAdUnitId
             InterstitialAd.load(
                 getApplication(),
-                RemoteConfigManager.onboardingInterstitialAdUnitId,
+                unitId,
                 AdRequest.Builder().build(),
                 object : InterstitialAdLoadCallback() {
                     override fun onAdLoaded(ad: InterstitialAd) {
+                        ad.setOnPaidEventListener { value ->
+                            AdRevenueLogger.log(value, unitId, AdFormat.INTERSTITIAL, ad.responseInfo)
+                        }
                         result.complete(ad)
                     }
 

@@ -103,7 +103,12 @@ object CallEndBannerAdManager {
         val wrapper = MutableContextWrapper(application)
         val widthDp = (application.resources.displayMetrics.widthPixels / application.resources.displayMetrics.density).toInt()
         val adView = AdView(wrapper)
-        adView.adUnitId = RemoteConfigManager.callEndBannerAdUnitId
+        val unitId = RemoteConfigManager.callEndBannerAdUnitId
+        adView.adUnitId = unitId
+        // Fires once per impression, auto-refreshes included.
+        adView.setOnPaidEventListener { value ->
+            AdRevenueLogger.log(value, unitId, AdFormat.BANNER, adView.responseInfo)
+        }
         adView.setAdSize(AdSize.getInlineAdaptiveBannerAdSize(widthDp, MAX_AD_HEIGHT_DP))
         adView.adListener = object : AdListener() {
             // Only this request's first result is ours to act on. The same listener keeps firing

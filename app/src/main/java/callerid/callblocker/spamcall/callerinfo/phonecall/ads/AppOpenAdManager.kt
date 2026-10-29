@@ -209,13 +209,17 @@ object AppOpenAdManager : DefaultLifecycleObserver, Application.ActivityLifecycl
     private fun loadAd() {
         if (!isEnabled || isLoadingAd || isAdAvailable()) return
         isLoadingAd = true
+        val unitId = RemoteConfigManager.appOpenAdUnitId
         AppOpenAd.load(
             application,
-            RemoteConfigManager.appOpenAdUnitId,
+            unitId,
             AdRequest.Builder().build(),
             object : AppOpenAd.AppOpenAdLoadCallback() {
                 override fun onAdLoaded(ad: AppOpenAd) {
                     Log.d(TAG, "App Open ad loaded")
+                    ad.setOnPaidEventListener { value ->
+                        AdRevenueLogger.log(value, unitId, AdFormat.APP_OPEN, ad.responseInfo)
+                    }
                     appOpenAd = ad
                     adLoadedAtMillis = SystemClock.elapsedRealtime()
                     isLoadingAd = false
