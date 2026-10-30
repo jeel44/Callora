@@ -58,16 +58,29 @@ class CallEndedAdsViewModel(application: Application) : AndroidViewModel(applica
                 nativeAdController.start(preloadedAd)
                 if (preloadedAd != null) NativeAdPreloadManager.preload(reason = "after consume")
             }
+            CallEndAdFormat.BANNER -> requestBanner()
+        }
+    }
+
+    /** Another call ended while the popup was still up: that call's screen gets its own ad. */
+    fun refreshForNewCall() {
+        when (format) {
+            CallEndAdFormat.NATIVE -> nativeAdController.reload()
             CallEndAdFormat.BANNER -> {
-                val preloaded = CallEndBannerAdManager.takeOrAwait(onReady = ::onBannerReady)
-                when {
-                    preloaded != null -> onBannerReady(preloaded)
-                    // Known off already: no point reserving space. (Unknown-yet reads as on here
-                    // — the manager answers with null and the slot collapses if it turns out off.)
-                    !RemoteConfigManager.isCallEndNativeAdEnabled -> Unit
-                    else -> _bannerState.value = CallEndBannerState.Loading(CallEndBannerAdManager.slotHeightDp)
-                }
+                releaseBanner()
+                requestBanner()
             }
+        }
+    }
+
+    private fun requestBanner() {
+        val preloaded = CallEndBannerAdManager.takeOrAwait(onReady = ::onBannerReady)
+        when {
+            preloaded != null -> onBannerReady(preloaded)
+            // Known off already: no point reserving space. (Unknown-yet reads as on here
+            // — the manager answers with null and the slot collapses if it turns out off.)
+            !RemoteConfigManager.isCallEndNativeAdEnabled -> Unit
+            else -> _bannerState.value = CallEndBannerState.Loading(CallEndBannerAdManager.slotHeightDp)
         }
     }
 
@@ -76,13 +89,18 @@ class CallEndedAdsViewModel(application: Application) : AndroidViewModel(applica
         _bannerState.value = if (ready != null) CallEndBannerState.Loaded(ready) else CallEndBannerState.Hidden
     }
 
-    override fun onCleared() {
-        nativeAdController.clear()
-        if (format == CallEndAdFormat.BANNER) CallEndBannerAdManager.cancelAwait()
+    private fun releaseBanner() {
+        CallEndBannerAdManager.cancelAwait()
         banner?.let {
             CallEndBannerAdManager.rebind(it, getApplication())
             it.adView.destroy()
         }
         banner = null
+        _bannerState.value = CallEndBannerState.Hidden
+    }
+
+    override fun onCleared() {
+        nativeAdController.clear()
+        if (format == CallEndAdFormat.BANNER) releaseBanner()
     }
 }

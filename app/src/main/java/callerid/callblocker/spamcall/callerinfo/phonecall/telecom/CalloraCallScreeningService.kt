@@ -1,6 +1,7 @@
 package callerid.callblocker.spamcall.callerinfo.phonecall.telecom
 
 import callerid.callblocker.spamcall.callerinfo.phonecall.ads.preloadCallEndAd
+import android.os.Bundle
 import android.telephony.TelephonyManager
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.CallDataPermissions
 import callerid.callblocker.spamcall.callerinfo.phonecall.data.repository.ContactsRepository
@@ -20,6 +21,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+// spam_blocked's `source` param: why the call was rejected.
+private const val SOURCE_USER_BLOCK = "user_block"
+private const val SOURCE_SPAM_FLAG = "spam_flag"
+private const val SOURCE_TELEMARKETER_RULE = "telemarketer_rule"
+private const val SOURCE_INTERNATIONAL_RULE = "international_rule"
+
 /**
  * Declaring this service (see AndroidManifest.xml) is what makes this app eligible for
  * RoleManager.ROLE_CALL_SCREENING — the system binds it to screen every incoming call once
@@ -29,7 +36,7 @@ import kotlinx.coroutines.launch
  * Real screening. Always rejected: numbers on the system BlockedNumberContract list
  * (BlockedNumbersRepository — written to by IncomingCallViewModel.blockCaller and Contact
  * Detail's Block action). On top of that, Spam Center's three blocking rules
- * (SpamRulesPreferencesRepository) decide the rest — see [shouldRejectByRules]. All lookups are
+ * (SpamRulesPreferencesRepository) decide the rest — see [rejectSourceByRules]. All lookups are
  * ContentResolver/DataStore/SharedPreferences reads, so the response is
  * sent asynchronously rather than blocking onScreenCall's caller thread — the platform allows a
  * CallScreeningService up to 5 seconds to call respondToCall before it assumes an allow.
@@ -55,14 +62,19 @@ class CalloraCallScreeningService : CallScreeningService() {
         // Earliest sign of a call on every path, default phone app or not.
         preloadCallEndAd(reason = "call screened")
         serviceScope.launch {
-            val shouldReject = blockedNumbersRepository.isNumberBlocked(applicationContext, number) ||
-                shouldRejectByRules(number)
-            if (shouldReject) {
-                // Only real blocks — every allowed call also reaches here but shouldReject is
-                // false for those, so this can't fire on every screened call, only actual ones.
-                // No distinct spam-reason/source field exists in this check (it's a plain OR of
-                // the block list and the local spam-mark list) to attach as a param.
-                AnalyticsHelper.logEvent("spam_blocked")
+            val rejectSource = if (blockedNumbersRepository.isNumberBlocked(applicationContext, number)) {
+                SOURCE_USER_BLOCK
+            } else {
+                rejectSourceByRules(number)
+            }
+            val shouldReject = rejectSource != null
+            if (rejectSource != null) {
+                // Only real blocks — every allowed call also reaches here but rejectSource is
+                // null for those, so this can't fire on every screened call, only actual ones.
+                AnalyticsHelper.logEvent(
+                    "spam_blocked",
+                    Bundle().apply { putString("source", rejectSource) },
+                )
             }
             val response = CallResponse.Builder()
                 .setDisallowCall(shouldReject)
@@ -85,20 +97,28 @@ class CalloraCallScreeningService : CallScreeningService() {
      *    saved contact. Needs contacts access to tell — without it nothing is blocked, since a
      *    relative abroad would otherwise be rejected too.
      * With all three off, a spam-marked number rings (shown as spam) instead of being rejected.
+     *
+     * Returns the first matching rule's `source` value for spam_blocked, or null to let the call
+     * through.
      */
-    private suspend fun shouldRejectByRules(number: String): Boolean {
+    private suspend fun rejectSourceByRules(number: String): String? {
         val context = applicationContext
         val spamMark = spamMarkRepository.getSpamMark(context, number)
         if (spamMark != null) {
-            if (SpamRulesPreferencesRepository.isAutoBlockTopSpammersEnabled(context)) return true
+            if (SpamRulesPreferencesRepository.isAutoBlockTopSpammersEnabled(context)) return SOURCE_SPAM_FLAG
             if (spamMark.category == SpamCategory.TELEMARKETING &&
                 SpamRulesPreferencesRepository.isBlockTelemarketersEnabled(context)
             ) {
-                return true
+                return SOURCE_TELEMARKETER_RULE
             }
         }
-        return SpamRulesPreferencesRepository.isBlockInternationalSpamEnabled(context) &&
+        return if (SpamRulesPreferencesRepository.isBlockInternationalSpamEnabled(context) &&
             isUnknownInternationalNumber(number)
+        ) {
+            SOURCE_INTERNATIONAL_RULE
+        } else {
+            null
+        }
     }
 
     private fun isUnknownInternationalNumber(number: String): Boolean {

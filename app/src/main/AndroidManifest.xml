@@ -50,6 +50,12 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
 
+        <!-- screen_view is logged by hand (CalloraNavHost, CallEndedActivity): the SDK's automatic
+             per-Activity event would only duplicate those. -->
+        <meta-data
+            android:name="google_analytics_automatic_screen_reporting_enabled"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

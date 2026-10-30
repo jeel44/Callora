@@ -9,7 +9,9 @@ import androidx.activity.compose.setContent
 import android.graphics.Color
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.key
 import callerid.callblocker.spamcall.callerinfo.phonecall.MainActivity
 import callerid.callblocker.spamcall.callerinfo.phonecall.R
 import callerid.callblocker.spamcall.callerinfo.phonecall.analytics.AnalyticsHelper
@@ -32,6 +34,9 @@ import com.google.firebase.analytics.FirebaseAnalytics
  */
 open class CallEndedActivity : AppCompatActivity() {
 
+    // The same instance CallEndedRoute gets from viewModel(): both are scoped to this Activity.
+    private val adsViewModel: CallEndedAdsViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Same reason as MainActivity: the window background the system paints before Compose's
         // first frame must already match the saved theme.
@@ -51,20 +56,35 @@ open class CallEndedActivity : AppCompatActivity() {
             )
         }
 
-        val launchDetails = intent.getStringExtra(EXTRA_PHONE_NUMBER)?.let { phoneNumber ->
-            EndedCallDetails(
-                phoneNumber = phoneNumber,
-                isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false),
-                durationSeconds = intent.getLongExtra(EXTRA_DURATION_SECONDS, 0L),
-                wasDeclined = intent.getBooleanExtra(EXTRA_WAS_DECLINED, false),
-            )
-        }
+        val launchDetails = intent.toEndedCallDetails()
         if (launchDetails != null) {
             showCallEnded(launchDetails, intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis()))
         } else {
             onCreateWithoutDetails()
         }
     }
+
+    // singleTask: a call ending while this screen is still up lands here, not in onCreate. Without
+    // this the screen would keep showing the previous call, and its Block and Report actions would
+    // act on that caller. Intents without [launch]'s extras (PostCallActivity's POST_CALL) are
+    // ignored.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val details = intent.toEndedCallDetails() ?: return
+        adsViewModel.refreshForNewCall()
+        showCallEnded(details, intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis()))
+    }
+
+    private fun Intent.toEndedCallDetails(): EndedCallDetails? =
+        getStringExtra(EXTRA_PHONE_NUMBER)?.let { phoneNumber ->
+            EndedCallDetails(
+                phoneNumber = phoneNumber,
+                isIncoming = getBooleanExtra(EXTRA_IS_INCOMING, false),
+                durationSeconds = getLongExtra(EXTRA_DURATION_SECONDS, 0L),
+                wasDeclined = getBooleanExtra(EXTRA_WAS_DECLINED, false),
+            )
+        }
 
     /** Launched without the extras [launch] sets — nothing real to show. PostCallActivity
      * overrides this to resolve the call from Telecom's post-call intent instead. */
@@ -94,28 +114,32 @@ open class CallEndedActivity : AppCompatActivity() {
 
         setContent {
             CalloraTheme(darkTheme = ThemeState.isDarkMode) {
-                CallEndedRoute(
-                    phoneNumber = phoneNumber,
-                    isIncoming = isIncoming,
-                    durationSeconds = durationSeconds,
-                    wasDeclined = wasDeclined,
-                    endedAtMillis = endedAtMillis,
-                    onDismiss = { finish() },
-                    onOpenContactDetail = { number ->
-                        startActivity(MainActivity.contactDetailIntent(this, number))
-                        finish()
-                    },
-                    onCall = { number ->
-                        // Routes through CalloraNavHost's attemptPlaceCall gate (see
-                        // MainActivity.placeCallIntent's own doc) instead of firing
-                        // Intent.ACTION_CALL directly — this popup is a separate Activity from
-                        // MainActivity's NavHost, so without this hand-off the call would start
-                        // with nothing having navigated to OUTGOING_DIALING first, and only
-                        // CallBannerHost would end up showing once CallRepository reports it.
-                        startActivity(MainActivity.placeCallIntent(this, number))
-                        finish()
-                    },
-                )
+                // Per call, not per number: the same number calling back still gets a fresh
+                // screen, with none of the previous call's state (see onNewIntent).
+                key(endedAtMillis) {
+                    CallEndedRoute(
+                        phoneNumber = phoneNumber,
+                        isIncoming = isIncoming,
+                        durationSeconds = durationSeconds,
+                        wasDeclined = wasDeclined,
+                        endedAtMillis = endedAtMillis,
+                        onDismiss = { finish() },
+                        onOpenContactDetail = { number ->
+                            startActivity(MainActivity.contactDetailIntent(this, number))
+                            finish()
+                        },
+                        onCall = { number ->
+                            // Routes through CalloraNavHost's attemptPlaceCall gate (see
+                            // MainActivity.placeCallIntent's own doc) instead of firing
+                            // Intent.ACTION_CALL directly — this popup is a separate Activity from
+                            // MainActivity's NavHost, so without this hand-off the call would start
+                            // with nothing having navigated to OUTGOING_DIALING first, and only
+                            // CallBannerHost would end up showing once CallRepository reports it.
+                            startActivity(MainActivity.placeCallIntent(this, number))
+                            finish()
+                        },
+                    )
+                }
             }
         }
     }

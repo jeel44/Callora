@@ -182,10 +182,25 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
     val dialerRoleHeldOnEntry = remember { isDialerRoleHeld(context) }
     val followUpPendingOnEntry = remember { hasPendingSetupRequests(context) }
 
+    // The grant can be noticed by the role dialog's result or, after the system Settings fallback
+    // below, by ON_RESUME — and a dialog grant reaches both. This flag keeps that to one event; a
+    // role already held on entry to this screen isn't a new grant, so ON_RESUME ignores it (which
+    // also covers this composable being recreated after the grant).
+    var dialerGrantLogged by remember { mutableStateOf(false) }
+    val logDialerGrantOnce = {
+        if (!dialerGrantLogged) {
+            dialerGrantLogged = true
+            AnalyticsHelper.logEvent("set_default_dialer")
+        }
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) proceedIfDialerRoleHeld()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (!dialerRoleHeldOnEntry && isDialerRoleHeld(context)) logDialerGrantOnce()
+                proceedIfDialerRoleHeld()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -202,7 +217,7 @@ fun SetDefaultScreen(onContinue: () -> Unit, modifier: Modifier = Modifier) {
         // confirmation resolveStartDestination uses, is what makes this the real grant point
         // rather than just "the request round-trip completed". Not granted: stay on this screen.
         if (isDialerRoleHeld(context)) {
-            AnalyticsHelper.logEvent("set_default_dialer")
+            logDialerGrantOnce()
             proceedIfDialerRoleHeld()
         } else {
             Toast.makeText(context, dialerRequiredMessage, Toast.LENGTH_LONG).show()

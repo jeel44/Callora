@@ -225,12 +225,14 @@ fun CallEndedRoute(
         // derives from), which CallEndedActivity.onCreate can't have synchronously without
         // blocking the main thread the way this screen deliberately avoids everywhere else. Keyed
         // on phoneNumber like the rest of this LaunchedEffect, so this can't double-fire on
-        // recomposition — a given CallEndedActivity instance only ever shows one phoneNumber.
+        // recomposition — a second call reaching the same Activity restarts this composable
+        // (see key(endedAtMillis) in CallEndedActivity), which logs its own event.
         AnalyticsHelper.logEvent(
             "call_ended",
             Bundle().apply {
                 putString("call_type", if (isCallMissed(isIncoming, durationSeconds)) "missed" else "answered")
-                putBoolean("is_spam", loaded.spamMark != null)
+                // A string on purpose: Firebase only takes String, long and double param values.
+                putString("is_spam", (loaded.spamMark != null).toString())
             },
         )
     }
