@@ -15,8 +15,8 @@ android {
         applicationId = "callerid.callblocker.spamcall.callerinfo.phonecall"
         minSdk = 26
         targetSdk = 37
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 7
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
