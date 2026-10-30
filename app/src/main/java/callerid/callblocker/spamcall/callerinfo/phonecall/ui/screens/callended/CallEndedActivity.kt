@@ -66,14 +66,25 @@ open class CallEndedActivity : AppCompatActivity() {
 
     // singleTask: a call ending while this screen is still up lands here, not in onCreate. Without
     // this the screen would keep showing the previous call, and its Block and Report actions would
-    // act on that caller. Intents without [launch]'s extras (PostCallActivity's POST_CALL) are
-    // ignored.
+    // act on that caller.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val details = intent.toEndedCallDetails() ?: return
+        val details = intent.toEndedCallDetails()
+        if (details != null) {
+            showNewCall(details, intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis()))
+        } else {
+            onNewIntentWithoutDetails()
+        }
+    }
+
+    /** The screen is already up with an earlier call: leave it as it is, unlike
+     * [onCreateWithoutDetails]. PostCallActivity overrides this for Telecom's post-call intent. */
+    protected open fun onNewIntentWithoutDetails() = Unit
+
+    protected fun showNewCall(details: EndedCallDetails, endedAtMillis: Long) {
         adsViewModel.refreshForNewCall()
-        showCallEnded(details, intent.getLongExtra(EXTRA_ENDED_AT_MILLIS, System.currentTimeMillis()))
+        showCallEnded(details, endedAtMillis)
     }
 
     private fun Intent.toEndedCallDetails(): EndedCallDetails? =

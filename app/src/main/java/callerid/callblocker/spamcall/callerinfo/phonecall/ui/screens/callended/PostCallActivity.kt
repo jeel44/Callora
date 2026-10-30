@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Build
 import android.telecom.TelecomManager
 import androidx.lifecycle.lifecycleScope
+import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.EndedCallDetails
 import callerid.callblocker.spamcall.callerinfo.phonecall.telecom.PostCallMonitor
 import callerid.callblocker.spamcall.callerinfo.phonecall.ui.screens.setdefault.isDialerRoleHeld
 import kotlinx.coroutines.launch
@@ -22,14 +23,33 @@ import kotlinx.coroutines.launch
 class PostCallActivity : CallEndedActivity() {
 
     override fun onCreateWithoutDetails() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
-            intent.action != TelecomManager.ACTION_POST_CALL ||
-            isDialerRoleHeld(this) ||
-            !PostCallMonitor.tryClaim()
-        ) {
+        if (!claimPostCall()) {
             finish()
             return
         }
+        lifecycleScope.launch {
+            val details = resolvePostCall()
+            if (details == null) finish() else showCallEnded(details, System.currentTimeMillis())
+        }
+    }
+
+    // Another call ended while this screen is still up. Nothing to show for it (blocked, or a
+    // trigger already claimed it): the card already on screen stays, so no finish() here.
+    override fun onNewIntentWithoutDetails() {
+        if (!claimPostCall()) return
+        lifecycleScope.launch {
+            val details = resolvePostCall() ?: return@launch
+            showNewCall(details, System.currentTimeMillis())
+        }
+    }
+
+    private fun claimPostCall(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            intent.action == TelecomManager.ACTION_POST_CALL &&
+            !isDialerRoleHeld(this) &&
+            PostCallMonitor.tryClaim()
+
+    private suspend fun resolvePostCall(): EndedCallDetails? {
         @Suppress("DEPRECATION")
         val handle = intent.getParcelableExtra<Uri>(TelecomManager.EXTRA_HANDLE)
         val disconnectCause = if (intent.hasExtra(TelecomManager.EXTRA_DISCONNECT_CAUSE)) {
@@ -37,13 +57,10 @@ class PostCallActivity : CallEndedActivity() {
         } else {
             null
         }
-        lifecycleScope.launch {
-            val details = PostCallMonitor.resolveEndedCall(
-                context = applicationContext,
-                hintNumber = handle?.schemeSpecificPart,
-                hintDisconnectCause = disconnectCause,
-            )
-            if (details == null) finish() else showCallEnded(details, System.currentTimeMillis())
-        }
+        return PostCallMonitor.resolveEndedCall(
+            context = applicationContext,
+            hintNumber = handle?.schemeSpecificPart,
+            hintDisconnectCause = disconnectCause,
+        )
     }
 }
